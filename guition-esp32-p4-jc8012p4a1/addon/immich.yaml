@@ -49,6 +49,8 @@ online_image:
     format: JPEG
     type: RGB565
     resize: 1280x800
+    request_headers:
+      x-api-key: ${immich_api_key}
     on_download_finished:
       then:
         - lvgl.image.update:
@@ -208,8 +210,7 @@ script:
                               id(immich_last_asset_id) = asset_id;
                               id(immich_last_image_url) = std::string("${immich_base_url}") +
                                                           "/api/assets/" + asset_id +
-                                                          "/thumbnail?size=preview&key=" +
-                                                          std::string("${immich_api_key}");
+                                                          "/thumbnail?size=preview";
                               ESP_LOGI("immich", "Loading asset: %s", asset_id.c_str());
                               ESP_LOGI("immich", "Image URL: %s", id(immich_last_image_url).c_str());
                           - lvgl.label.update:
