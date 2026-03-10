@@ -58,6 +58,7 @@ external_components:
       ref: main
       path: components
     components: [online_image]
+    refresh: 0s
 
 # DSI PHY power rail
 esp_ldo:
