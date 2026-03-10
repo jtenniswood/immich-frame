@@ -391,7 +391,7 @@ lvgl:
             id: info_overlay
             align: BOTTOM_LEFT
             x: 45
-            y: -40
+            y: -10
             width: SIZE_CONTENT
             height: SIZE_CONTENT
             bg_opa: 0%
@@ -402,7 +402,7 @@ lvgl:
             layout:
               type: flex
               flex_flow: ROW
-              flex_align_cross: CENTER
+              flex_align_cross: START
               pad_column: 20
             widgets:
               - obj:
@@ -421,6 +421,7 @@ lvgl:
                         text_color: 0x000000
                         text_opa: 50%
                         text_font: roboto_light150_font
+                        text_letter_space: -5
                     - label:
                         id: time_label
                         x: 0
@@ -428,6 +429,7 @@ lvgl:
                         text: ""
                         text_color: 0xFFFFFF
                         text_font: roboto_light150_font
+                        text_letter_space: -5
               - obj:
                   width: SIZE_CONTENT
                   height: SIZE_CONTENT
@@ -440,29 +442,6 @@ lvgl:
                     flex_flow: COLUMN
                     pad_row: 8
                   widgets:
-                    - obj:
-                        width: SIZE_CONTENT
-                        height: SIZE_CONTENT
-                        bg_opa: 0%
-                        border_width: 0
-                        pad_all: 0
-                        scrollable: false
-                        widgets:
-                          - label:
-                              id: location_label_shadow
-                              x: 1
-                              y: 1
-                              text: ""
-                              text_color: 0x000000
-                              text_opa: 50%
-                              text_font: roboto_light40_font
-                          - label:
-                              id: location_label
-                              x: 0
-                              y: 0
-                              text: ""
-                              text_color: 0xFFFFFF
-                              text_font: roboto_light40_font
                     - obj:
                         width: SIZE_CONTENT
                         height: SIZE_CONTENT
@@ -486,6 +465,29 @@ lvgl:
                               text: ""
                               text_color: 0xFFFFFF
                               text_font: roboto_light26_font
+                    - obj:
+                        width: SIZE_CONTENT
+                        height: SIZE_CONTENT
+                        bg_opa: 0%
+                        border_width: 0
+                        pad_all: 0
+                        scrollable: false
+                        widgets:
+                          - label:
+                              id: location_label_shadow
+                              x: 1
+                              y: 1
+                              text: ""
+                              text_color: 0x000000
+                              text_opa: 50%
+                              text_font: roboto_light40_font
+                          - label:
+                              id: location_label
+                              x: 0
+                              y: 0
+                              text: ""
+                              text_color: 0xFFFFFF
+                              text_font: roboto_light40_font
         - obj:
             id: loading_screen
             x: 0
