@@ -376,10 +376,8 @@ lvgl:
                     lv_indev_get_point(lv_indev_get_act(), &point);
                     int dx = point.x - id(touch_start_x);
                     if (dx < -80) {
-                      id(immich_backoff_cycles) = 1;
                       id(immich_advance_forward).execute();
                     } else if (dx > 80) {
-                      id(immich_backoff_cycles) = 1;
                       id(immich_show_previous).execute();
                     } else {
                       if (lv_obj_has_flag(id(info_overlay), LV_OBJ_FLAG_HIDDEN))
@@ -658,6 +656,7 @@ script:
                       if (old_slot == 0) id(slot0_ready) = false;
                       else if (old_slot == 1) id(slot1_ready) = false;
                       else id(slot2_ready) = false;
+                      id(immich_backoff_cycles) = 1;
                       ESP_LOGI("immich", "Advancing: slot %d -> %d", old_slot, id(active_slot));
                   - if:
                       condition:
