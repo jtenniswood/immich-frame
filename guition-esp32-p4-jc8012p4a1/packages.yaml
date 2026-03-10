@@ -4,3 +4,4 @@ packages:
   icons: !include assets/icons.yaml
   time_sync: !include addon/time.yaml
   immich: !include addon/immich.yaml
+  accent_color: !include addon/accent_color.yaml

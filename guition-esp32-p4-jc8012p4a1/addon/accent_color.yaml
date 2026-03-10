@@ -1,0 +1,74 @@
+# =============================================================================
+# ACCENT COLOR - Extract dominant color from photo
+# =============================================================================
+# Samples a grid of pixels from the displayed image, weighted by colour
+# saturation so vivid pixels dominate over blacks/whites/grays, and applies
+# a darkened version as the main_page background colour.
+#
+# Reads the raw RGB565 buffer directly (little-endian byte order) because
+# Image::get_pixel() always decodes as big-endian, producing wrong colours
+# when byte_order is little_endian.
+# =============================================================================
+
+script:
+  - id: extract_accent_color
+    mode: restart
+    then:
+      - lambda: |-
+          esphome::image::Image *img = nullptr;
+          int s = id(active_slot);
+          if (s == 0) img = id(immich_img_0);
+          else if (s == 1) img = id(immich_img_1);
+          else img = id(immich_img_2);
+
+          int img_w = img->get_width();
+          int img_h = img->get_height();
+          if (img_w <= 0 || img_h <= 0) return;
+
+          lv_img_dsc_t *dsc = img->get_lv_img_dsc();
+          const uint8_t *data = dsc->data;
+          if (!data) return;
+
+          int grid = 20;
+          int step_x = img_w / grid;
+          int step_y = img_h / grid;
+          if (step_x < 1) step_x = 1;
+          if (step_y < 1) step_y = 1;
+
+          int64_t r_wsum = 0, g_wsum = 0, b_wsum = 0;
+          int64_t w_total = 0;
+
+          for (int sy = step_y / 2; sy < img_h; sy += step_y) {
+            for (int sx = step_x / 2; sx < img_w; sx += step_x) {
+              int pos = (sx + sy * img_w) * 2;
+              uint16_t rgb565 = data[pos] | (data[pos + 1] << 8);
+
+              int r = ((rgb565 >> 11) & 0x1F);
+              int g = ((rgb565 >> 5) & 0x3F);
+              int b = (rgb565 & 0x1F);
+              r = (r << 3) | (r >> 2);
+              g = (g << 2) | (g >> 4);
+              b = (b << 3) | (b >> 2);
+
+              int mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+              int mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+              int sat = mx - mn;
+
+              int weight = sat * sat + 1;
+              r_wsum += (int64_t)r * weight;
+              g_wsum += (int64_t)g * weight;
+              b_wsum += (int64_t)b * weight;
+              w_total += weight;
+            }
+          }
+
+          if (w_total > 0) {
+            int r = (int)(r_wsum / w_total);
+            int g = (int)(g_wsum / w_total);
+            int b = (int)(b_wsum / w_total);
+            ESP_LOGI("accent", "Accent color: rgb(%d,%d,%d)", r, g, b);
+
+            int dr = r / 3, dg = g / 3, db = b / 3;
+            lv_color_t dark_accent = lv_color_make(dr, dg, db);
+            lv_obj_set_style_bg_color(id(main_page), dark_accent, 0);
+          }

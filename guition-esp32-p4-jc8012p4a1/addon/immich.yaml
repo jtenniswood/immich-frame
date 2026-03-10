@@ -624,6 +624,7 @@ script:
               meta += id(immich_photo_location);
             }
             return meta;
+      - script.execute: extract_accent_color
 
   # ---------------------------------------------------------------------------
   # Advance forward: move ring index, display if ready, else fetch fresh
