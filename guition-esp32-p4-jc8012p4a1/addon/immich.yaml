@@ -417,12 +417,12 @@ script:
           id: http_req
           url: ${immich_base_url}/api/search/random
           capture_response: true
-          max_response_buffer_size: 16kB
+          max_response_buffer_size: 24kB
           request_headers:
             Content-Type: application/json
             Accept: application/json
             x-api-key: ${immich_api_key}
-          body: '{"size":1,"type":"IMAGE"}'
+          body: '{"size":1,"type":"IMAGE","withExif":true,"withPeople":true}'
           on_response:
             then:
               - lambda: |-
@@ -536,12 +536,12 @@ script:
           id: http_req
           url: ${immich_base_url}/api/search/random
           capture_response: true
-          max_response_buffer_size: 16kB
+          max_response_buffer_size: 24kB
           request_headers:
             Content-Type: application/json
             Accept: application/json
             x-api-key: ${immich_api_key}
-          body: '{"size":1,"type":"IMAGE"}'
+          body: '{"size":1,"type":"IMAGE","withExif":true,"withPeople":true}'
           on_response:
             then:
               - lambda: |-
