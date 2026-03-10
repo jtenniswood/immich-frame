@@ -246,11 +246,6 @@ void OnlineImage::loop() {
     this->end_connection_();
     return;
   }
-  if (this->downloader_ == nullptr) {
-    ESP_LOGE(TAG, "Downloader not instantiated; cannot download");
-    return;
-  }
-
   // Download phase: pull data from the HTTP connection
   size_t available = this->download_buffer_.free_capacity();
   if (available) {
@@ -367,6 +362,7 @@ void OnlineImage::end_connection_() {
   }
   this->decoder_.reset();
   this->download_buffer_.reset();
+  this->download_buffer_.shrink(this->download_buffer_initial_size_);
 }
 
 bool OnlineImage::validate_url_(const std::string &url) {

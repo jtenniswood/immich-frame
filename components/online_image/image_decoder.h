@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "esphome/core/color.h"
 
 namespace esphome {
@@ -113,6 +114,7 @@ class ImageDecoder {
   int y_offset_ = 0;
   int scaled_width_ = 0;
   int scaled_height_ = 0;
+  std::vector<int> src_x_lut_;
 };
 
 class DownloadBuffer {
@@ -138,6 +140,7 @@ class DownloadBuffer {
   void reset() { this->unread_ = 0; }
 
   size_t resize(size_t size);
+  void shrink(size_t max_size);
 
  protected:
   RAMAllocator<uint8_t> allocator_{};

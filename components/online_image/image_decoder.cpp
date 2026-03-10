@@ -38,6 +38,12 @@ bool ImageDecoder::set_size(int width, int height) {
     memset(this->image_->buffer_, 0, this->image_->get_buffer_size_());
   }
 
+  double inv = (this->x_scale_ > 0) ? 1.0 / this->x_scale_ : 1.0;
+  this->src_x_lut_.resize(this->scaled_width_);
+  for (int i = 0; i < this->scaled_width_; i++) {
+    this->src_x_lut_[i] = std::min(static_cast<int>(i * inv), width - 1);
+  }
+
   return success;
 }
 
@@ -77,8 +83,6 @@ void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *
     return;
   }
 
-  double inv_scale = (this->x_scale_ > 0) ? 1.0 / this->x_scale_ : 1.0;
-
   for (int row = 0; row < h; row++) {
     int src_y = y + row;
     int dst_y = static_cast<int>(src_y * this->y_scale_) + this->y_offset_;
@@ -89,8 +93,7 @@ void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *
     int dst_x_end = std::min(this->x_offset_ + this->scaled_width_, this->image_->buffer_width_);
 
     for (int dst_x = dst_x_start; dst_x < dst_x_end; dst_x++) {
-      int src_col = static_cast<int>((dst_x - this->x_offset_) * inv_scale);
-      if (src_col >= w) src_col = w - 1;
+      int src_col = this->src_x_lut_[dst_x - this->x_offset_];
       int src_offset = (row * w + src_col) * 2;
       int dst_pos = this->image_->get_position_(dst_x, dst_y);
       memcpy(this->image_->buffer_ + dst_pos, data + src_offset, 2);
@@ -108,11 +111,9 @@ void ImageDecoder::draw_rgb888_scaled(int src_y, int src_w, const uint8_t *rgb88
 
   int dst_x_start = std::max(0, this->x_offset_);
   int dst_x_end = std::min(this->x_offset_ + this->scaled_width_, this->image_->buffer_width_);
-  double inv_scale = (this->x_scale_ > 0) ? 1.0 / this->x_scale_ : 1.0;
 
   for (int dst_x = dst_x_start; dst_x < dst_x_end; dst_x++) {
-    int src_col = static_cast<int>((dst_x - this->x_offset_) * inv_scale);
-    if (src_col >= src_w) src_col = src_w - 1;
+    int src_col = this->src_x_lut_[dst_x - this->x_offset_];
     int si = src_col * 3;
     uint8_t r = rgb888[si], g = rgb888[si + 1], b = rgb888[si + 2];
     uint16_t rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
@@ -169,6 +170,14 @@ size_t DownloadBuffer::resize(size_t size) {
     this->size_ = 0;
     return 0;
   }
+}
+
+void DownloadBuffer::shrink(size_t max_size) {
+  if (this->size_ <= max_size) return;
+  this->allocator_.deallocate(this->buffer_, this->size_);
+  this->buffer_ = this->allocator_.allocate(max_size);
+  this->size_ = this->buffer_ ? max_size : 0;
+  this->reset();
 }
 
 }  // namespace online_image

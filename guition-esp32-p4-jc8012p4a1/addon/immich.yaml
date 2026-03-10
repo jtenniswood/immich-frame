@@ -36,6 +36,12 @@ globals:
   - id: immich_photo_location
     type: std::string
     initial_value: '""'
+  - id: immich_photo_year
+    type: int
+    initial_value: '0'
+  - id: immich_error_retries
+    type: int
+    initial_value: '0'
   - id: immich_prefetch_ready
     type: bool
     initial_value: 'false'
@@ -51,6 +57,9 @@ globals:
   - id: immich_prefetch_location
     type: std::string
     initial_value: '""'
+  - id: immich_prefetch_year
+    type: int
+    initial_value: '0'
 
 # --- Backlight ---
 
@@ -75,7 +84,9 @@ online_image:
       x-api-key: ${immich_api_key}
     on_download_finished:
       then:
-        - lambda: 'id(immich_request_inflight) = false;'
+        - lambda: |-
+            id(immich_request_inflight) = false;
+            id(immich_error_retries) = 0;
         - lvgl.image.update:
             id: slideshow_img
             src: immich_image
@@ -83,6 +94,14 @@ online_image:
             id: info_label
             text: !lambda |-
               std::string info = id(immich_photo_date);
+              if (id(immich_photo_year) > 0) {
+                auto now = id(sntp_time).now();
+                if (now.is_valid()) {
+                  int ago = now.year - id(immich_photo_year);
+                  if (ago == 1) info += " (1 year ago)";
+                  else if (ago > 1) info += str_sprintf(" (%d years ago)", ago);
+                }
+              }
               if (!id(immich_photo_location).empty()) {
                 if (!info.empty()) info += "  \u2022  ";
                 info += id(immich_photo_location);
@@ -96,19 +115,29 @@ online_image:
       then:
         - lambda: |-
             id(immich_request_inflight) = false;
-            ESP_LOGE("immich", "Image download/decode failed for URL: %s", id(immich_last_image_url).c_str());
-        - lvgl.label.update:
-            id: info_label
-            text: ""
+            id(immich_error_retries)++;
+            ESP_LOGE("immich", "Image decode failed (attempt %d): %s",
+                     id(immich_error_retries), id(immich_last_image_url).c_str());
         - lvgl.label.update:
             id: status_label
             text: !lambda |-
-              return std::string("Img fail: ") + id(immich_last_asset_id);
+              return str_sprintf("Retry %d/3...", id(immich_error_retries));
+        - if:
+            condition:
+              lambda: 'return id(immich_error_retries) < 3;'
+            then:
+              - delay: 1s
+              - script.execute: immich_request_next_image
+            else:
+              - lambda: 'id(immich_error_retries) = 0;'
+              - lvgl.label.update:
+                  id: status_label
+                  text: "Waiting for next slide..."
 
 # --- LVGL UI ---
 
 lvgl:
-  buffer_size: 12%
+  buffer_size: 6%
   byte_order: little_endian
   displays:
     - tft_display
@@ -122,6 +151,19 @@ lvgl:
             align: CENTER
             src: immich_image
             scrollable: false
+            clickable: true
+            on_short_click:
+              then:
+                - if:
+                    condition:
+                      lambda: 'return lv_obj_has_flag(id(info_overlay), LV_OBJ_FLAG_HIDDEN);'
+                    then:
+                      - lvgl.widget.show: info_overlay
+                    else:
+                      - lvgl.widget.hide: info_overlay
+            on_long_press:
+              then:
+                - script.execute: immich_request_next_image
         - obj:
             id: info_overlay
             align: BOTTOM_MID
@@ -170,7 +212,11 @@ esphome:
             id: status_label
             text: !lambda |-
               auto ips = network::get_ip_addresses();
-              if (!ips.empty()) return std::string("WiFi OK: ") + ips[0].str();
+              if (!ips.empty()) {
+                char buf[IP_ADDRESS_BUFFER_SIZE];
+                ips[0].str_to(buf);
+                return std::string("WiFi OK: ") + buf;
+              }
               return std::string("WiFi OK (no IP)");
         - delay: 3s
         - script.execute: immich_request_next_image
@@ -217,6 +263,7 @@ script:
                             id(immich_last_image_url) = id(immich_prefetch_image_url);
                             id(immich_photo_date) = id(immich_prefetch_date);
                             id(immich_photo_location) = id(immich_prefetch_location);
+                            id(immich_photo_year) = id(immich_prefetch_year);
                             id(immich_prefetch_ready) = false;
                             ESP_LOGI("immich", "Using prefetched asset: %s", id(immich_last_asset_id).c_str());
                         - lvgl.label.update:
@@ -258,6 +305,7 @@ script:
                   }
 
                   std::string asset_id, photo_date, photo_location;
+                  int photo_year = 0;
                   auto doc = json::parse_json(body);
                   JsonObject asset;
                   if (!doc.isNull()) {
@@ -279,13 +327,13 @@ script:
                   if (asset["localDateTime"].is<const char *>()) {
                     std::string raw = asset["localDateTime"].as<std::string>();
                     if (raw.size() >= 10) {
-                      int year = atoi(raw.substr(0, 4).c_str());
+                      photo_year = atoi(raw.substr(0, 4).c_str());
                       int month = atoi(raw.substr(5, 2).c_str());
                       int day = atoi(raw.substr(8, 2).c_str());
                       const char *months[] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
                       if (month >= 1 && month <= 12)
-                        photo_date = str_sprintf("%d %s %d", day, months[month], year);
+                        photo_date = str_sprintf("%d %s %d", day, months[month], photo_year);
                     }
                   }
 
@@ -300,13 +348,13 @@ script:
                     if (photo_date.empty() && exif["dateTimeOriginal"].is<const char *>()) {
                       std::string raw = exif["dateTimeOriginal"].as<std::string>();
                       if (raw.size() >= 10) {
-                        int year = atoi(raw.substr(0, 4).c_str());
+                        photo_year = atoi(raw.substr(0, 4).c_str());
                         int month = atoi(raw.substr(5, 2).c_str());
                         int day = atoi(raw.substr(8, 2).c_str());
                         const char *months[] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
                         if (month >= 1 && month <= 12)
-                          photo_date = str_sprintf("%d %s %d", day, months[month], year);
+                          photo_date = str_sprintf("%d %s %d", day, months[month], photo_year);
                       }
                     }
                   }
@@ -314,6 +362,7 @@ script:
                   id(immich_last_asset_id) = asset_id;
                   id(immich_photo_date) = photo_date;
                   id(immich_photo_location) = photo_location;
+                  id(immich_photo_year) = photo_year;
                   id(immich_last_image_url) = std::string("${immich_base_url}") +
                                               "/api/assets/" + asset_id + "/thumbnail?size=preview";
                   ESP_LOGI("immich", "Asset: %s | Date: %s | Location: %s",
@@ -372,17 +421,18 @@ script:
                   }
                   std::string asset_id = asset["id"].as<std::string>();
                   std::string photo_date, photo_location;
+                  int photo_year = 0;
 
                   if (asset["localDateTime"].is<const char *>()) {
                     std::string raw = asset["localDateTime"].as<std::string>();
                     if (raw.size() >= 10) {
-                      int year = atoi(raw.substr(0, 4).c_str());
+                      photo_year = atoi(raw.substr(0, 4).c_str());
                       int month = atoi(raw.substr(5, 2).c_str());
                       int day = atoi(raw.substr(8, 2).c_str());
                       const char *months[] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
                       if (month >= 1 && month <= 12)
-                        photo_date = str_sprintf("%d %s %d", day, months[month], year);
+                        photo_date = str_sprintf("%d %s %d", day, months[month], photo_year);
                     }
                   }
                   JsonObject exif = asset["exifInfo"].as<JsonObject>();
@@ -396,13 +446,13 @@ script:
                     if (photo_date.empty() && exif["dateTimeOriginal"].is<const char *>()) {
                       std::string raw = exif["dateTimeOriginal"].as<std::string>();
                       if (raw.size() >= 10) {
-                        int year = atoi(raw.substr(0, 4).c_str());
+                        photo_year = atoi(raw.substr(0, 4).c_str());
                         int month = atoi(raw.substr(5, 2).c_str());
                         int day = atoi(raw.substr(8, 2).c_str());
                         const char *months[] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
                         if (month >= 1 && month <= 12)
-                          photo_date = str_sprintf("%d %s %d", day, months[month], year);
+                          photo_date = str_sprintf("%d %s %d", day, months[month], photo_year);
                       }
                     }
                   }
@@ -412,6 +462,7 @@ script:
                                                   "/api/assets/" + asset_id + "/thumbnail?size=preview";
                   id(immich_prefetch_date) = photo_date;
                   id(immich_prefetch_location) = photo_location;
+                  id(immich_prefetch_year) = photo_year;
                   id(immich_prefetch_ready) = true;
                   ESP_LOGI("immich", "Prefetched: %s", asset_id.c_str());
           on_error:
