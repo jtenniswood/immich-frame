@@ -71,4 +71,5 @@ script:
             int dr = r / 3, dg = g / 3, db = b / 3;
             lv_color_t dark_accent = lv_color_make(dr, dg, db);
             lv_obj_set_style_bg_color(id(main_page)->obj, dark_accent, 0);
+            lv_obj_set_style_bg_opa(id(main_page)->obj, LV_OPA_COVER, 0);
           }
