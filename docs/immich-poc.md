@@ -1,5 +1,7 @@
 # Immich Frame (ESPHome, Standalone)
 
+*Last updated: 14 Dec 2025*
+
 ## Purpose
 
 This document explains the implementation of a standalone digital photo frame powered by Immich, running on the Guition ESP32-P4 (JC8012P4A1) without Home Assistant. It is written to make future reimplementation easy.
