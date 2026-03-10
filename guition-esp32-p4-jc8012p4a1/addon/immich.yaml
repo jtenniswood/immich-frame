@@ -403,7 +403,7 @@ lvgl:
               type: flex
               flex_flow: ROW
               flex_align_cross: START
-              pad_column: 20
+              pad_column: 40
             widgets:
               - obj:
                   width: SIZE_CONTENT
