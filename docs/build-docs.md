@@ -1,6 +1,6 @@
 # Immich Frame (ESPHome, Standalone)
 
-*Last updated: 14 Dec 2025*
+*Last updated: 10 Mar 2026*
 
 ## Purpose
 
@@ -19,7 +19,7 @@ guition-esp32-p4-jc8012p4a1/
 │   ├── accent_color.yaml     # Extract accent color from photo for page background
 │   └── time.yaml             # SNTP clock and time label updates
 ├── assets/
-│   ├── fonts.yaml            # Roboto font definitions (26/30/40/88pt)
+│   ├── fonts.yaml            # Roboto font definitions (32/30/46/88/150pt)
 │   └── icons.yaml            # MDI WiFi icon for setup screen
 └── components/
     └── gsl3680/              # Custom touchscreen driver
@@ -131,9 +131,11 @@ Tunable defaults in `addon/immich.yaml`:
 ### Main Page
 
 - **`slideshow_img`** -- Full-screen LVGL image widget displaying the active slot's image.
-- **`info_overlay`** -- Bottom bar (56px, 50% opacity black). Tap image to toggle visibility.
-  - Left: **`time_label`** -- Current time (HH:MM), updated every 60s via SNTP.
-  - Right: **`meta_label`** -- Photo metadata: date, relative age ("3 years ago"), person name, location (city, country). Fields separated by bullet characters.
+- **`info_overlay`** -- Transparent container anchored to bottom-left (no background bar). Tap image to toggle visibility. Uses a flex ROW layout with the clock on the left and metadata stacked vertically to its right.
+  - **`time_label`** -- Current time (HH:MM) in Roboto Light 150px, updated every 60s via SNTP.
+  - **`time_ago_label`** -- Relative photo age ("3 years ago") in Roboto Light 46px.
+  - **`location_label`** -- Photo location (city, country) in Roboto Light 32px.
+  - Each label has a paired `*_shadow` label rendered behind it (same text, black at 50% opacity, offset 2px right and 2px down) for readability over photos.
 - **`loading_screen`** -- Shown on boot with "Starting up" text and a progress bar. Hidden after WiFi connects or 10s grace period.
 - **`wifi_setup_prompt`** -- WiFi icon + instructions to connect to the captive portal hotspot. Shown when WiFi disconnects after boot grace period.
 
