@@ -97,7 +97,7 @@ script:
           int b = (int)(b_wsum / w_total);
           ESP_LOGI("accent", "Accent rgb(%d,%d,%d) offset x=%d y=%d", r, g, b, x_off, y_off);
 
-          int dr = r / 3, dg = g / 3, db = b / 3;
+          int dr = r / 2, dg = g / 2, db = b / 2;
           uint16_t accent_565 = ((dr >> 3) << 11) | ((dg >> 2) << 5) | (db >> 3);
           uint8_t lo = accent_565 & 0xFF;
           uint8_t hi = (accent_565 >> 8) & 0xFF;
