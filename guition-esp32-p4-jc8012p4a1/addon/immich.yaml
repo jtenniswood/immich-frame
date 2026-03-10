@@ -249,6 +249,20 @@ globals:
     type: std::string
     initial_value: '""'
 
+  # --- Portrait preload state ---
+  - id: portrait_preload_slot
+    type: int
+    initial_value: '-1'
+  - id: portrait_preload_left_ready
+    type: bool
+    initial_value: 'false'
+  - id: portrait_preload_right_ready
+    type: bool
+    initial_value: 'false'
+  - id: portrait_using_preload
+    type: bool
+    initial_value: 'false'
+
   # --- Previous image portrait state ---
   - id: immich_prev_is_portrait
     type: bool
@@ -486,6 +500,45 @@ online_image:
             ESP_LOGE("immich", "Portrait right decode failed, falling back to single");
             id(portrait_right_ready) = false;
             id(portrait_companion_found) = false;
+
+  # --- Portrait preload components (downloaded during prefetch) ---
+  - id: immich_portrait_preload_left
+    url: "https://via.placeholder.com/1x1.jpg"
+    format: JPEG
+    resize: 640x960
+    type: RGB565
+    byte_order: little_endian
+    request_headers:
+      x-api-key: ${immich_api_key}
+    on_download_finished:
+      then:
+        - lambda: |-
+            id(portrait_preload_left_ready) = true;
+            ESP_LOGI("immich", "Portrait preload left ready (slot %d)", id(portrait_preload_slot));
+    on_error:
+      then:
+        - lambda: |-
+            ESP_LOGE("immich", "Portrait preload left failed");
+            id(portrait_preload_left_ready) = false;
+
+  - id: immich_portrait_preload_right
+    url: "https://via.placeholder.com/1x1.jpg"
+    format: JPEG
+    resize: 640x960
+    type: RGB565
+    byte_order: little_endian
+    request_headers:
+      x-api-key: ${immich_api_key}
+    on_download_finished:
+      then:
+        - lambda: |-
+            id(portrait_preload_right_ready) = true;
+            ESP_LOGI("immich", "Portrait preload right ready (slot %d)", id(portrait_preload_slot));
+    on_error:
+      then:
+        - lambda: |-
+            ESP_LOGE("immich", "Portrait preload right failed");
+            id(portrait_preload_right_ready) = false;
 
 # =============================================================================
 # LVGL UI
@@ -891,34 +944,55 @@ script:
           lv_label_set_text(id(time_ago_label), ago.c_str());
           lv_label_set_text(id(time_ago_label_shadow), ago.c_str());
       - script.execute: extract_accent_color
-      - lambda: |-
-          int s = id(active_slot);
-          bool is_p = (s == 0) ? id(slot0_is_portrait) : (s == 1) ? id(slot1_is_portrait) : id(slot2_is_portrait);
-          if (is_p) {
-            std::string comp = (s == 0) ? id(slot0_companion_url) : (s == 1) ? id(slot1_companion_url) : id(slot2_companion_url);
-            std::string aid = (s == 0) ? id(slot0_asset_id) : (s == 1) ? id(slot1_asset_id) : id(slot2_asset_id);
-            id(portrait_left_ready) = false;
-            id(portrait_right_ready) = false;
-            id(portrait_primary_asset_id) = aid;
-            if (!comp.empty()) {
-              id(portrait_companion_found) = true;
-              id(portrait_companion_url) = comp;
-              ESP_LOGI("immich", "Portrait %s: companion pre-loaded, starting both downloads", aid.c_str());
-            } else {
-              std::string dt = (s == 0) ? id(slot0_datetime) : (s == 1) ? id(slot1_datetime) : id(slot2_datetime);
-              id(portrait_companion_found) = false;
-              id(portrait_companion_url) = "";
-              id(portrait_search_datetime) = dt;
-              id(companion_target_slot) = s;
-              ESP_LOGI("immich", "Portrait %s: no pre-loaded companion, searching now", aid.c_str());
-            }
-          }
       - if:
           condition:
             lambda: |-
               int s = id(active_slot);
-              return (s == 0) ? id(slot0_is_portrait) : (s == 1) ? id(slot1_is_portrait) : id(slot2_is_portrait);
+              bool is_p = (s == 0) ? id(slot0_is_portrait) : (s == 1) ? id(slot1_is_portrait) : id(slot2_is_portrait);
+              return is_p && id(portrait_preload_slot) == s
+                     && id(portrait_preload_left_ready) && id(portrait_preload_right_ready);
           then:
+            - lambda: |-
+                id(immich_is_portrait_pair) = true;
+                id(portrait_using_preload) = true;
+                id(portrait_preload_slot) = -1;
+                lv_obj_add_flag(id(slideshow_img), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_clear_flag(id(portrait_pair_container), LV_OBJ_FLAG_HIDDEN);
+                ESP_LOGI("immich", "Instant portrait pair from preload");
+            - lvgl.image.update:
+                id: portrait_left_img
+                src: immich_portrait_preload_left
+            - lvgl.image.update:
+                id: portrait_right_img
+                src: immich_portrait_preload_right
+            - script.execute: extract_accent_color
+      - if:
+          condition:
+            lambda: |-
+              int s = id(active_slot);
+              bool is_p = (s == 0) ? id(slot0_is_portrait) : (s == 1) ? id(slot1_is_portrait) : id(slot2_is_portrait);
+              return is_p && !id(immich_is_portrait_pair);
+          then:
+            - lambda: |-
+                int s = id(active_slot);
+                std::string comp = (s == 0) ? id(slot0_companion_url) : (s == 1) ? id(slot1_companion_url) : id(slot2_companion_url);
+                std::string aid = (s == 0) ? id(slot0_asset_id) : (s == 1) ? id(slot1_asset_id) : id(slot2_asset_id);
+                id(portrait_left_ready) = false;
+                id(portrait_right_ready) = false;
+                id(portrait_using_preload) = false;
+                id(portrait_primary_asset_id) = aid;
+                if (!comp.empty()) {
+                  id(portrait_companion_found) = true;
+                  id(portrait_companion_url) = comp;
+                  ESP_LOGI("immich", "Portrait %s: companion URL known, starting both downloads", aid.c_str());
+                } else {
+                  std::string dt = (s == 0) ? id(slot0_datetime) : (s == 1) ? id(slot1_datetime) : id(slot2_datetime);
+                  id(portrait_companion_found) = false;
+                  id(portrait_companion_url) = "";
+                  id(portrait_search_datetime) = dt;
+                  id(companion_target_slot) = s;
+                  ESP_LOGI("immich", "Portrait %s: no companion, searching now", aid.c_str());
+                }
             - online_image.set_url:
                 id: immich_portrait_left
                 url: !lambda |-
@@ -964,6 +1038,7 @@ script:
                 id(portrait_right_ready) = false;
                 id(portrait_companion_found) = false;
                 id(immich_is_portrait_pair) = false;
+                id(portrait_using_preload) = false;
                 int old_slot = id(active_slot);
                 id(active_slot) = (old_slot + 1) % 3;
                 id(active_slot_displayed) = false;
@@ -1050,6 +1125,7 @@ script:
                 id(portrait_right_ready) = false;
                 id(portrait_companion_found) = false;
                 id(immich_is_portrait_pair) = false;
+                id(portrait_using_preload) = false;
 
                 int prev_slot = (id(active_slot) + 2) % 3;
                 id(active_slot) = prev_slot;
@@ -1211,6 +1287,12 @@ script:
                            slot, asset_id.c_str(), photo_date.c_str(),
                            photo_person.c_str(), photo_location.c_str(), is_portrait);
 
+                  if (id(portrait_preload_slot) == slot) {
+                    id(portrait_preload_slot) = -1;
+                    id(portrait_preload_left_ready) = false;
+                    id(portrait_preload_right_ready) = false;
+                  }
+
                   if (slot == 0) {
                     id(slot0_asset_id) = asset_id; id(slot0_image_url) = img_url;
                     id(slot0_date) = photo_date; id(slot0_location) = photo_location;
@@ -1348,6 +1430,25 @@ script:
                   then:
                     - online_image.set_url:
                         id: immich_portrait_right
+                        url: !lambda 'return id(portrait_companion_url);'
+              - if:
+                  condition:
+                    lambda: 'return id(portrait_companion_found) && id(companion_target_slot) != id(active_slot);'
+                  then:
+                    - lambda: |-
+                        int ts = id(companion_target_slot);
+                        std::string primary_url = (ts == 0) ? id(slot0_image_url) : (ts == 1) ? id(slot1_image_url) : id(slot2_image_url);
+                        id(portrait_preload_slot) = ts;
+                        id(portrait_preload_left_ready) = false;
+                        id(portrait_preload_right_ready) = false;
+                        ESP_LOGI("immich", "Starting portrait preload for slot %d", ts);
+                    - online_image.set_url:
+                        id: immich_portrait_preload_left
+                        url: !lambda |-
+                          int ts = id(companion_target_slot);
+                          return (ts == 0) ? id(slot0_image_url) : (ts == 1) ? id(slot1_image_url) : id(slot2_image_url);
+                    - online_image.set_url:
+                        id: immich_portrait_preload_right
                         url: !lambda 'return id(portrait_companion_url);'
           on_error:
             then:
