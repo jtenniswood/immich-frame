@@ -222,6 +222,20 @@ globals:
     type: std::string
     initial_value: '""'
 
+  # --- Per-slot landscape zoom (256 = no zoom) ---
+  - id: slot0_zoom
+    type: uint16_t
+    initial_value: '256'
+  - id: slot1_zoom
+    type: uint16_t
+    initial_value: '256'
+  - id: slot2_zoom
+    type: uint16_t
+    initial_value: '256'
+  - id: immich_prev_zoom
+    type: uint16_t
+    initial_value: '256'
+
   # --- Portrait pair state ---
   - id: portrait_left_ready
     type: bool
@@ -939,6 +953,10 @@ script:
                 id: slideshow_img
                 src: immich_img_2
       - lambda: |-
+          int s = id(active_slot);
+          uint16_t zoom = (s == 0) ? id(slot0_zoom) : (s == 1) ? id(slot1_zoom) : id(slot2_zoom);
+          lv_img_set_zoom(id(slideshow_img), zoom);
+      - lambda: |-
           std::string loc = id(immich_photo_location);
           lv_label_set_text(id(location_label), loc.c_str());
           lv_label_set_text(id(location_label_shadow), loc.c_str());
@@ -974,6 +992,7 @@ script:
                 id(immich_is_portrait_pair) = true;
                 id(portrait_using_preload) = true;
                 id(portrait_preload_slot) = -1;
+                lv_img_set_zoom(id(slideshow_img), 256);
                 lv_obj_add_flag(id(slideshow_img), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_clear_flag(id(portrait_pair_container), LV_OBJ_FLAG_HIDDEN);
                 ESP_LOGI("immich", "Instant portrait pair from preload");
@@ -1050,6 +1069,8 @@ script:
                   id(immich_prev_year) = id(immich_photo_year);
                   id(immich_prev_month) = id(immich_photo_month);
                   id(immich_prev_person) = id(immich_photo_person);
+                  int s_old = id(active_slot);
+                  id(immich_prev_zoom) = (s_old == 0) ? id(slot0_zoom) : (s_old == 1) ? id(slot1_zoom) : id(slot2_zoom);
                   id(immich_prev_valid) = true;
                 }
                 id(portrait_left_ready) = false;
@@ -1122,6 +1143,8 @@ script:
                 int tmp_year = id(immich_photo_year);
                 int tmp_month = id(immich_photo_month);
                 std::string tmp_per = id(immich_photo_person);
+                int cur_s = id(active_slot);
+                uint16_t tmp_zoom = (cur_s == 0) ? id(slot0_zoom) : (cur_s == 1) ? id(slot1_zoom) : id(slot2_zoom);
 
                 id(immich_last_asset_id) = id(immich_prev_asset_id);
                 id(immich_last_image_url) = id(immich_prev_image_url);
@@ -1138,6 +1161,7 @@ script:
                 id(immich_prev_year) = tmp_year;
                 id(immich_prev_month) = tmp_month;
                 id(immich_prev_person) = tmp_per;
+                id(immich_prev_zoom) = tmp_zoom;
 
                 id(portrait_left_ready) = false;
                 id(portrait_right_ready) = false;
@@ -1149,6 +1173,7 @@ script:
                 id(active_slot) = prev_slot;
                 id(active_slot_displayed) = false;
 
+                uint16_t prev_zoom = id(immich_prev_zoom);
                 if (prev_slot == 0) {
                   id(slot0_ready) = false;
                   id(slot0_asset_id) = id(immich_last_asset_id);
@@ -1158,6 +1183,7 @@ script:
                   id(slot0_year) = id(immich_photo_year);
                   id(slot0_month) = id(immich_photo_month);
                   id(slot0_person) = id(immich_photo_person);
+                  id(slot0_zoom) = prev_zoom;
                 } else if (prev_slot == 1) {
                   id(slot1_ready) = false;
                   id(slot1_asset_id) = id(immich_last_asset_id);
@@ -1167,6 +1193,7 @@ script:
                   id(slot1_year) = id(immich_photo_year);
                   id(slot1_month) = id(immich_photo_month);
                   id(slot1_person) = id(immich_photo_person);
+                  id(slot1_zoom) = prev_zoom;
                 } else {
                   id(slot2_ready) = false;
                   id(slot2_asset_id) = id(immich_last_asset_id);
@@ -1176,6 +1203,7 @@ script:
                   id(slot2_year) = id(immich_photo_year);
                   id(slot2_month) = id(immich_photo_month);
                   id(slot2_person) = id(immich_photo_person);
+                  id(slot2_zoom) = prev_zoom;
                 }
                 ESP_LOGI("immich", "Showing previous in slot %d: %s", prev_slot, id(immich_last_asset_id).c_str());
             - if:
@@ -1226,6 +1254,7 @@ script:
                   std::string asset_id, photo_date, photo_location, photo_person, local_datetime;
                   int photo_year = 0, photo_month = 0;
                   bool is_portrait = false;
+                  uint16_t slot_zoom = 256;
                   auto doc = json::parse_json(body);
                   JsonObject asset;
                   if (!doc.isNull()) {
@@ -1286,6 +1315,14 @@ script:
                     }
                     if (exif_w > 0 && exif_h > 0) {
                       is_portrait = (exif_h > exif_w);
+                      if (!is_portrait) {
+                        float aspect = (float)exif_w / (float)exif_h;
+                        const float max_panoramic_ratio = 2.0f;
+                        if (aspect > 1.6f && aspect <= max_panoramic_ratio) {
+                          float decoded_h = 1280.0f / aspect;
+                          slot_zoom = (uint16_t)(256.0f * 800.0f / decoded_h);
+                        }
+                      }
                     }
                   }
 
@@ -1301,9 +1338,9 @@ script:
                   std::string img_url = std::string("${immich_base_url}") +
                                         "/api/assets/" + asset_id + "/thumbnail?size=preview";
                   int slot = id(target_slot);
-                  ESP_LOGI("immich", "Slot %d fetched: %s | %s | %s | %s | portrait=%d",
+                  ESP_LOGI("immich", "Slot %d fetched: %s | %s | %s | %s | portrait=%d zoom=%u",
                            slot, asset_id.c_str(), photo_date.c_str(),
-                           photo_person.c_str(), photo_location.c_str(), is_portrait);
+                           photo_person.c_str(), photo_location.c_str(), is_portrait, slot_zoom);
 
                   if (id(portrait_preload_slot) == slot) {
                     id(portrait_preload_slot) = -1;
@@ -1317,21 +1354,21 @@ script:
                     id(slot0_year) = photo_year; id(slot0_month) = photo_month;
                     id(slot0_person) = photo_person;
                     id(slot0_is_portrait) = is_portrait; id(slot0_datetime) = local_datetime;
-                    id(slot0_companion_url) = "";
+                    id(slot0_companion_url) = ""; id(slot0_zoom) = slot_zoom;
                   } else if (slot == 1) {
                     id(slot1_asset_id) = asset_id; id(slot1_image_url) = img_url;
                     id(slot1_date) = photo_date; id(slot1_location) = photo_location;
                     id(slot1_year) = photo_year; id(slot1_month) = photo_month;
                     id(slot1_person) = photo_person;
                     id(slot1_is_portrait) = is_portrait; id(slot1_datetime) = local_datetime;
-                    id(slot1_companion_url) = "";
+                    id(slot1_companion_url) = ""; id(slot1_zoom) = slot_zoom;
                   } else {
                     id(slot2_asset_id) = asset_id; id(slot2_image_url) = img_url;
                     id(slot2_date) = photo_date; id(slot2_location) = photo_location;
                     id(slot2_year) = photo_year; id(slot2_month) = photo_month;
                     id(slot2_person) = photo_person;
                     id(slot2_is_portrait) = is_portrait; id(slot2_datetime) = local_datetime;
-                    id(slot2_companion_url) = "";
+                    id(slot2_companion_url) = ""; id(slot2_zoom) = slot_zoom;
                   }
               - if:
                   condition:
@@ -1483,6 +1520,7 @@ script:
     then:
       - lambda: |-
           id(immich_is_portrait_pair) = true;
+          lv_img_set_zoom(id(slideshow_img), 256);
           lv_obj_add_flag(id(slideshow_img), LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(id(portrait_pair_container), LV_OBJ_FLAG_HIDDEN);
           ESP_LOGI("immich", "Displaying portrait pair");
