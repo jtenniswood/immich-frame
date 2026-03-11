@@ -1321,6 +1321,7 @@ script:
                 tag: immich
                 format: "Immich URL or API key not configured. Set via web UI at http://<device-ip>/"
             - script.stop: immich_fetch_into_slot
+      - lambda: 'id(immich_fetch_started) = true;'
       - http_request.post:
           id: http_req
           url: !lambda 'return id(immich_url).state + "/api/search/random";'
