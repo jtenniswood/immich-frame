@@ -913,6 +913,12 @@ interval:
           condition:
             lambda: |-
               if (!wifi::global_wifi_component->is_connected()) return false;
+              if (!id(immich_url).state.empty() && !id(immich_api_key_text).state.empty()
+                  && !id(slot0_ready) && !id(slot1_ready) && !id(slot2_ready)) {
+                id(target_slot) = 0;
+                id(immich_fetch_into_slot).execute();
+                return false;
+              }
               uint32_t interval_ms = (uint32_t)(id(slideshow_interval).state * 1000);
               uint32_t elapsed = millis() - id(immich_last_advance_ms);
               if (elapsed < interval_ms) return false;

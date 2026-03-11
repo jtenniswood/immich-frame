@@ -15,13 +15,6 @@ text:
     max_length: 255
     mode: text
     icon: "mdi:web"
-    set_action:
-      - if:
-          condition:
-            lambda: 'return !x.empty() && !id(immich_api_key_text).state.empty() && !id(slot0_ready);'
-          then:
-            - lambda: 'id(target_slot) = 0;'
-            - script.execute: immich_fetch_into_slot
 
   - platform: template
     name: "Immich API Key"
@@ -32,10 +25,3 @@ text:
     max_length: 255
     mode: password
     icon: "mdi:key"
-    set_action:
-      - if:
-          condition:
-            lambda: 'return !x.empty() && !id(immich_url).state.empty() && !id(slot0_ready);'
-          then:
-            - lambda: 'id(target_slot) = 0;'
-            - script.execute: immich_fetch_into_slot
