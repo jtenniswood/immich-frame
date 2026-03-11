@@ -1,46 +1,28 @@
 # Getting Started
 
-This project implements a standalone digital photo frame powered by [Immich](https://immich.app/), running on the Guition ESP32-P4 (JC8012P4A1) without Home Assistant. It uses [ESPHome](https://esphome.io/) for firmware configuration and deployment.
+::: tip Prefer a simpler setup?
+You can flash directly from your browser with the [Web Installer](./install) — no ESPHome toolchain needed.
+:::
 
-## Project Structure
+This guide covers the manual ESPHome install for users who want to customize substitutions or compile from source.
 
-```
-guition-esp32-p4-jc8012p4a1/
-├── esphome.yaml                # User entry point (substitutions, wifi, remote package ref)
-├── packages.yaml               # Aggregates all local packages
-├── device/
-│   └── device.yaml             # Hardware config (display, touch, SoC, external components)
-├── addon/
-│   ├── lvgl_base.yaml          # Shared LVGL config (buffer, displays)
-│   ├── connectivity.yaml       # WiFi, captive portal, HTTP client
-│   ├── immich_config.yaml      # Runtime-configurable Immich URL and API key
-│   ├── backlight.yaml          # Display backlight light component
-│   ├── screen_loading.yaml     # Loading screen (LVGL page + boot sequence)
-│   ├── screen_wifi_setup.yaml  # WiFi setup screen (LVGL page)
-│   ├── screen_slideshow.yaml   # Slideshow screen (LVGL page, ring buffer, API, scripts)
-│   ├── accent_color.yaml       # Extract accent color from photo for letterbox fill
-│   └── time.yaml               # SNTP clock and time label updates
-├── assets/
-│   ├── fonts.yaml              # Roboto font definitions (32/30/46/88/150pt)
-│   └── icons.yaml              # MDI WiFi icon for setup screen
-└── components/
-    └── gsl3680/                # Custom touchscreen driver
-components/
-└── online_image/               # Patched online_image with header-based auth
-```
+## What You Need
 
-Each screen is a self-contained YAML file that contributes an LVGL page, along with any screen-specific globals and scripts, to the merged config. ESPHome's `packages:` system deep-merges dictionaries and appends lists, so each file can independently define `lvgl: pages:`, `globals:`, `script:`, etc.
+1. **A [Guition ESP32-P4 (JC8012P4A1)](https://www.guition.com/)** — 10" 1280x800 touchscreen display
+2. **An [Immich](https://immich.app/) server** running on your local network
+3. **An Immich API key** — generate one in your Immich web UI under *Account Settings > API Keys*
+4. **[ESPHome](https://esphome.io/) installed** — via Home Assistant add-on, Docker, or `pip install esphome`
 
-## User Setup
+## Step 1: Create Your Config
 
-Create a minimal `esphome.yaml` that references the remote package:
+Create a new folder for your project and add two files:
+
+**`esphome.yaml`**
 
 ```yaml
 substitutions:
-  name: "immich-frame-10inch"
-  friendly_name: "Immich Frame 10inch"
-  immich_base_url: "http://192.168.1.30:2283"
-  immich_api_key: !secret immich_api_key
+  name: "immich-frame"
+  friendly_name: "Immich Frame"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -54,4 +36,49 @@ packages:
     refresh: 1s
 ```
 
-Then compile and flash with ESPHome as usual. On first boot, the device will connect to your WiFi network and start fetching random photos from your Immich server.
+**`secrets.yaml`** (same folder)
+
+```yaml
+wifi_ssid: "YourWiFiName"
+wifi_password: "YourWiFiPassword"
+```
+
+::: tip
+You can optionally set `immich_base_url` and `immich_api_key` as substitutions to bake them into the firmware, but it's easier to configure them on-screen after first boot.
+:::
+
+## Step 2: Flash the Firmware
+
+Connect the board via USB and run:
+
+```bash
+esphome run esphome.yaml
+```
+
+ESPHome will download the remote packages, compile, and flash the firmware. This first build takes a few minutes.
+
+## Step 3: First Boot
+
+Once flashed, the board walks you through setup on-screen:
+
+### 1. Loading screen
+
+A progress bar appears while the device starts up.
+
+### 2. WiFi connection
+
+If your WiFi credentials are in `secrets.yaml`, the device connects automatically. If not, it creates a hotspot — connect to it with your phone and follow the captive portal to enter your WiFi details.
+
+### 3. Immich setup screen
+
+Once connected to WiFi, the screen shows a URL like `http://192.168.x.x`. Open that address in your browser to see the device's web UI. Enter your **Immich URL** (e.g. `http://192.168.1.30:2283`) and **API key**, then hit save.
+
+### 4. Photos start showing
+
+The slideshow begins automatically. Your Immich photos will start appearing on screen.
+
+## Next Steps
+
+- **[Usage](./usage)** — learn the touch gestures and what's shown on screen
+- **[Configuration](./configuration)** — adjust slideshow speed, clock, timezone, and more
+- **[Troubleshooting](./troubleshooting)** — fixes for common issues

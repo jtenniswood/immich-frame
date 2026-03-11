@@ -1,0 +1,86 @@
+name: Build & Deploy
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-firmware:
+    name: Build Firmware
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.build.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ESPHome firmware
+        id: build
+        uses: esphome/build-action@v6
+        with:
+          yaml-file: guition-esp32-p4-jc8012p4a1/factory.yaml
+          complete-manifest: true
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: ${{ steps.build.outputs.name }}/
+
+      - name: Upload firmware to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.build.outputs.name }}/*.factory.bin
+            ${{ steps.build.outputs.name }}/manifest.json
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-firmware
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download firmware artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: firmware/
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build docs
+        run: npm run docs:build
+
+      - name: Copy firmware into docs output
+        run: |
+          mkdir -p docs/.vitepress/dist/firmware
+          cp firmware/manifest.json docs/.vitepress/dist/firmware/
+          cp firmware/*.factory.bin docs/.vitepress/dist/firmware/
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

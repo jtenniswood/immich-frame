@@ -1,0 +1,20 @@
+# =============================================================================
+# FACTORY FIRMWARE - Web Installer Build
+# =============================================================================
+# Secrets-free config for the ESPHome web installer. Boots into AP mode
+# for WiFi setup via captive portal or Improv Serial.
+# =============================================================================
+
+substitutions:
+  name: "immich-frame-10inch"
+  friendly_name: "Immich Frame 10inch"
+
+esphome:
+  project:
+    name: jtenniswood.immich-frame
+    version: "1.0.0"
+
+packages:
+  immich_frame: !include packages.yaml
+
+improv_serial:

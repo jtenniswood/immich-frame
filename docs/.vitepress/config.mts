@@ -3,9 +3,11 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'Immich Frame',
   description: 'Standalone Immich-powered digital photo frame on ESP32-P4',
+  base: '/immich-frame/',
 
   themeConfig: {
     nav: [
+      { text: 'Install', link: '/install' },
       { text: 'Docs', link: '/getting-started' },
       { text: 'GitHub', link: 'https://github.com/jtenniswood/immich-frame' },
     ],
@@ -14,13 +16,16 @@ export default defineConfig({
       {
         text: 'Guide',
         items: [
+          { text: 'Install', link: '/install' },
           { text: 'Getting Started', link: '/getting-started' },
+          { text: 'Usage', link: '/usage' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Troubleshooting', link: '/troubleshooting' },
         ],
       },
       {
         text: 'Reference',
+        collapsed: true,
         items: [
           { text: 'Architecture', link: '/architecture' },
           { text: 'Data Flow', link: '/data-flow' },

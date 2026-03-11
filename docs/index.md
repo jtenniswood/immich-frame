@@ -10,6 +10,9 @@ hero:
       text: Get Started
       link: /getting-started
     - theme: alt
+      text: Install
+      link: /install
+    - theme: alt
       text: View on GitHub
       link: https://github.com/jtenniswood/immich-frame
 
