@@ -8,7 +8,7 @@
 # =============================================================================
 
 substitutions:
-  immich_slide_interval: "15s"
+  immich_slide_interval_seconds: "15"
   immich_verify_ssl: "false"
 
 http_request:
@@ -897,21 +897,36 @@ esphome:
               - lvgl.widget.show: wifi_setup_prompt
 
 # =============================================================================
+# USER-CONFIGURABLE SETTINGS
+# =============================================================================
+
+number:
+  - platform: template
+    name: "Slideshow Interval"
+    id: slideshow_interval
+    min_value: 5
+    max_value: 300
+    step: 5
+    initial_value: ${immich_slide_interval_seconds}
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "s"
+    icon: "mdi:timer-outline"
+
+# =============================================================================
 # SLIDESHOW TIMER
 # =============================================================================
 
 interval:
-  - interval: ${immich_slide_interval}
+  - interval: 5s
     then:
       - if:
           condition:
             lambda: |-
               if (!wifi::global_wifi_component->is_connected()) return false;
+              uint32_t interval_ms = (uint32_t)(id(slideshow_interval).state * 1000);
               uint32_t elapsed = millis() - id(immich_last_advance_ms);
-              if (elapsed < 10000) {
-                ESP_LOGD("immich", "Timer skipped, last advance %ums ago", elapsed);
-                return false;
-              }
+              if (elapsed < interval_ms) return false;
               return true;
           then:
             - script.execute: immich_advance_forward

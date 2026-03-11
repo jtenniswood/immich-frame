@@ -176,7 +176,7 @@ Tunable defaults in `addon/immich.yaml`:
 
 | Substitution | Default | Description |
 |---|---|---|
-| `immich_slide_interval` | `15s` | Auto-advance interval |
+| `immich_slide_interval_seconds` | `15` | Default slideshow interval in seconds (runtime-adjustable via HA) |
 | `immich_verify_ssl` | `false` | TLS certificate verification |
 
 ## UI Layout
