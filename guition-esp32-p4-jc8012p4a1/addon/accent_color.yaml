@@ -94,30 +94,30 @@ script:
             uint8_t hi = (accent_565 >> 8) & 0xFF;
 
             uint8_t *buf = const_cast<uint8_t*>(data);
+            int row_bytes = img_w * 2;
 
-            for (int y = 0; y < img_h; y++) {
-              int row = y * img_w;
+            // Build one full accent row for top/bottom bar fills
+            if (y_off > 0) {
+              for (int x = 0; x < img_w; x++) {
+                buf[x * 2] = lo; buf[x * 2 + 1] = hi;
+              }
+              for (int y = 1; y < y_off; y++)
+                memcpy(buf + y * row_bytes, buf, row_bytes);
+              for (int y = img_h - y_off; y < img_h; y++)
+                memcpy(buf + y * row_bytes, buf, row_bytes);
+            }
+
+            // Build one column segment for left/right bar fills
+            if (x_off > 0) {
+              int col_bytes = x_off * 2;
+              uint8_t col_buf[col_bytes];
               for (int x = 0; x < x_off; x++) {
-                int pos = (row + x) * 2;
-                buf[pos] = lo; buf[pos + 1] = hi;
+                col_buf[x * 2] = lo; col_buf[x * 2 + 1] = hi;
               }
-              for (int x = img_w - x_off; x < img_w; x++) {
-                int pos = (row + x) * 2;
-                buf[pos] = lo; buf[pos + 1] = hi;
-              }
-            }
-            for (int y = 0; y < y_off; y++) {
-              int row = y * img_w;
-              for (int x = x_off; x < img_w - x_off; x++) {
-                int pos = (row + x) * 2;
-                buf[pos] = lo; buf[pos + 1] = hi;
-              }
-            }
-            for (int y = img_h - y_off; y < img_h; y++) {
-              int row = y * img_w;
-              for (int x = x_off; x < img_w - x_off; x++) {
-                int pos = (row + x) * 2;
-                buf[pos] = lo; buf[pos + 1] = hi;
+              for (int y = y_off; y < img_h - y_off; y++) {
+                int row = y * row_bytes;
+                memcpy(buf + row, col_buf, col_bytes);
+                memcpy(buf + row + (img_w - x_off) * 2, col_buf, col_bytes);
               }
             }
           };

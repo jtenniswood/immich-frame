@@ -15,8 +15,7 @@ esphome:
     priority: -300
     then:
       - lambda: |-
-          std::string url = id(immich_url).state;
-          while (!url.empty() && url.back() == '/') url.pop_back();
+          std::string url = strip_trailing_slashes(id(immich_url).state);
           if (url != id(immich_url).state) {
             id(immich_url).publish_state(url);
           }
@@ -34,8 +33,7 @@ text:
     set_action:
       - lambda: |-
           if (x.empty()) return;
-          std::string url = x;
-          while (!url.empty() && url.back() == '/') url.pop_back();
+          std::string url = strip_trailing_slashes(x);
           id(immich_url).publish_state(url);
           ESP_LOGI("immich", "Immich URL configured: %s", url.c_str());
       - script.execute: immich_check_config_ready

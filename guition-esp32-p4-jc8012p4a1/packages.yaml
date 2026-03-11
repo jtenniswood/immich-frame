@@ -11,4 +11,6 @@ packages:
   screen_loading:  !include addon/screen_loading.yaml
   screen_wifi:     !include addon/screen_wifi_setup.yaml
   screen_setup:    !include addon/screen_immich_setup.yaml
+  immich_api:      !include addon/immich_api.yaml
+  immich_slide:    !include addon/immich_slideshow.yaml
   screen_slide:    !include addon/screen_slideshow.yaml

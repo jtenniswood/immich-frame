@@ -6,6 +6,8 @@
 # =============================================================================
 
 substitutions:
+  # Set to "true" to enable SSL certificate verification.
+  # Default "false" allows self-signed certs common in home lab setups.
   immich_verify_ssl: "false"
 
 http_request:
@@ -36,7 +38,7 @@ wifi:
                 - script.execute: immich_fetch_into_slot
         else:
           - lambda: |-
-              auto ip = wifi::global_wifi_component->get_ip_addresses()[0];
+              auto ip = wifi::global_wifi_component->get_ip_address();
               std::string url = "http://" + ip.str();
               lv_label_set_text(id(setup_ip_label), url.c_str());
           - lvgl.page.show: immich_setup_page

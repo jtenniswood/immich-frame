@@ -47,16 +47,16 @@ inline std::string format_time_ago(int photo_year, int photo_month, int now_year
   if (months_ago >= 12) {
     int years = months_ago / 12;
     if (years == 1) return "1 year ago";
-    return str_sprintf("%d years ago", years);
+    return std::to_string(years) + " years ago";
   }
   if (months_ago == 1) return "1 month ago";
-  if (months_ago > 1) return str_sprintf("%d months ago", months_ago);
+  if (months_ago > 1) return std::to_string(months_ago) + " months ago";
   return "";
 }
 
 inline std::string format_photo_date(int year, int month) {
   if (month >= 1 && month <= 12)
-    return str_sprintf("%s %d", MONTH_NAMES[month], year);
+    return std::string(MONTH_NAMES[month]) + " " + std::to_string(year);
   return "";
 }
 
