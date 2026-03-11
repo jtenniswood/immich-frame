@@ -5,6 +5,10 @@
 # Values persist across reboots via NVS flash.
 # =============================================================================
 
+substitutions:
+  immich_base_url: ""
+  immich_api_key: ""
+
 text:
   - platform: template
     name: "Immich URL"
