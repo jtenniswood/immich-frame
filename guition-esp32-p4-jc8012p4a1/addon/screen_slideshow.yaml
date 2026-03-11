@@ -483,75 +483,83 @@ online_image:
       x-api-key: !lambda 'return id(immich_api_key_text).state;'
     on_download_finished:
       then:
-        - lambda: |-
-            id(slot2_ready) = true;
-            id(immich_error_retries) = 0;
-            ESP_LOGI("immich", "Slot 2 ready: %s", id(slot2_asset_id).c_str());
-            if (id(active_slot) == 2) {
-              id(immich_photo_date) = id(slot2_date);
-              id(immich_photo_location) = id(slot2_location);
-              id(immich_photo_year) = id(slot2_year);
-              id(immich_photo_month) = id(slot2_month);
-              id(immich_photo_person) = id(slot2_person);
-              id(immich_last_asset_id) = id(slot2_asset_id);
-              id(immich_last_image_url) = id(slot2_image_url);
-              if (!id(slot2_is_portrait)) {
-                id(active_slot_displayed) = true;
-              }
-            }
         - if:
             condition:
-              lambda: 'return id(active_slot) == 2 && !id(slot2_is_portrait);'
-            then:
-              - script.execute: immich_display_current
-        - if:
-            condition:
-              lambda: 'return id(active_slot) == 2 && id(slot2_is_portrait);'
+              lambda: 'return id(slot2_asset_id) == id(slot2_pending_asset_id);'
             then:
               - lambda: |-
-                  std::string comp = id(slot2_companion_url);
-                  id(portrait_left_ready) = false;
-                  id(portrait_right_ready) = false;
-                  id(portrait_using_preload) = false;
-                  id(portrait_primary_asset_id) = id(slot2_asset_id);
-                  if (!comp.empty()) {
-                    id(portrait_companion_found) = true;
-                    id(portrait_companion_url) = comp;
-                    ESP_LOGI("immich", "Portrait slot 2 active: companion URL known, starting both downloads");
-                  } else {
-                    id(portrait_companion_found) = false;
-                    id(portrait_companion_url) = "";
-                    id(portrait_search_datetime) = id(slot2_datetime);
-                    id(companion_target_slot) = 2;
-                    ESP_LOGI("immich", "Portrait slot 2 active: no companion, searching now");
+                  id(slot2_ready) = true;
+                  id(immich_error_retries) = 0;
+                  ESP_LOGI("immich", "Slot 2 ready: %s", id(slot2_asset_id).c_str());
+                  if (id(active_slot) == 2) {
+                    id(immich_photo_date) = id(slot2_date);
+                    id(immich_photo_location) = id(slot2_location);
+                    id(immich_photo_year) = id(slot2_year);
+                    id(immich_photo_month) = id(slot2_month);
+                    id(immich_photo_person) = id(slot2_person);
+                    id(immich_last_asset_id) = id(slot2_asset_id);
+                    id(immich_last_image_url) = id(slot2_image_url);
+                    if (!id(slot2_is_portrait)) {
+                      id(active_slot_displayed) = true;
+                    }
                   }
-              - online_image.set_url:
-                  id: immich_portrait_left
-                  url: !lambda 'return id(slot2_image_url);'
               - if:
                   condition:
-                    lambda: 'return id(portrait_companion_found);'
+                    lambda: 'return id(active_slot) == 2 && !id(slot2_is_portrait);'
                   then:
+                    - script.execute: immich_display_current
+              - if:
+                  condition:
+                    lambda: 'return id(active_slot) == 2 && id(slot2_is_portrait);'
+                  then:
+                    - lambda: |-
+                        std::string comp = id(slot2_companion_url);
+                        id(portrait_left_ready) = false;
+                        id(portrait_right_ready) = false;
+                        id(portrait_using_preload) = false;
+                        id(portrait_primary_asset_id) = id(slot2_asset_id);
+                        if (!comp.empty()) {
+                          id(portrait_companion_found) = true;
+                          id(portrait_companion_url) = comp;
+                          ESP_LOGI("immich", "Portrait slot 2 active: companion URL known, starting both downloads");
+                        } else {
+                          id(portrait_companion_found) = false;
+                          id(portrait_companion_url) = "";
+                          id(portrait_search_datetime) = id(slot2_datetime);
+                          id(companion_target_slot) = 2;
+                          ESP_LOGI("immich", "Portrait slot 2 active: no companion, searching now");
+                        }
                     - online_image.set_url:
-                        id: immich_portrait_right
-                        url: !lambda 'return id(portrait_companion_url);'
-                  else:
-                    - script.execute: immich_fetch_portrait_companion
-        - if:
-            condition:
-              lambda: 'return id(slot2_is_portrait) && id(active_slot) != 2;'
-            then:
-              - lambda: |-
-                  id(companion_target_slot) = 2;
-                  id(portrait_search_datetime) = id(slot2_datetime);
-                  id(portrait_primary_asset_id) = id(slot2_asset_id);
-              - script.execute: immich_fetch_portrait_companion
-            else:
+                        id: immich_portrait_left
+                        url: !lambda 'return id(slot2_image_url);'
+                    - if:
+                        condition:
+                          lambda: 'return id(portrait_companion_found);'
+                        then:
+                          - online_image.set_url:
+                              id: immich_portrait_right
+                              url: !lambda 'return id(portrait_companion_url);'
+                        else:
+                          - script.execute: immich_fetch_portrait_companion
               - if:
                   condition:
-                    lambda: 'return id(active_slot) != 2;'
+                    lambda: 'return id(slot2_is_portrait) && id(active_slot) != 2;'
                   then:
-                    - script.execute: immich_prefetch_chain
+                    - lambda: |-
+                        id(companion_target_slot) = 2;
+                        id(portrait_search_datetime) = id(slot2_datetime);
+                        id(portrait_primary_asset_id) = id(slot2_asset_id);
+                    - script.execute: immich_fetch_portrait_companion
+                  else:
+                    - if:
+                        condition:
+                          lambda: 'return id(active_slot) != 2;'
+                        then:
+                          - script.execute: immich_prefetch_chain
+            else:
+              - lambda: |-
+                  ESP_LOGW("immich", "Slot 2 download stale (pending %s, current %s), ignoring",
+                           id(slot2_pending_asset_id).c_str(), id(slot2_asset_id).c_str());
     on_error:
       then:
         - lambda: |-
@@ -1244,6 +1252,7 @@ script:
                   id(slot0_month) = id(immich_photo_month);
                   id(slot0_person) = id(immich_photo_person);
                   id(slot0_zoom) = prev_zoom;
+                  id(slot0_pending_asset_id) = id(immich_last_asset_id);
                 } else if (prev_slot == 1) {
                   id(slot1_ready) = false;
                   id(slot1_asset_id) = id(immich_last_asset_id);
@@ -1254,6 +1263,7 @@ script:
                   id(slot1_month) = id(immich_photo_month);
                   id(slot1_person) = id(immich_photo_person);
                   id(slot1_zoom) = prev_zoom;
+                  id(slot1_pending_asset_id) = id(immich_last_asset_id);
                 } else {
                   id(slot2_ready) = false;
                   id(slot2_asset_id) = id(immich_last_asset_id);
@@ -1264,6 +1274,7 @@ script:
                   id(slot2_month) = id(immich_photo_month);
                   id(slot2_person) = id(immich_photo_person);
                   id(slot2_zoom) = prev_zoom;
+                  id(slot2_pending_asset_id) = id(immich_last_asset_id);
                 }
                 ESP_LOGI("immich", "Showing previous in slot %d: %s", prev_slot, id(immich_last_asset_id).c_str());
             - if:
