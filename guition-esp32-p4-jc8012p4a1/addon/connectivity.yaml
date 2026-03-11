@@ -22,14 +22,24 @@ wifi:
         lv_bar_set_value(id(loading_progress_bar), 100, LV_ANIM_OFF);
         lv_label_set_text(id(loading_status_label), "Connected");
     - delay: 800ms
-    - lvgl.page.show: slideshow_page
-    - delay: 2s
     - if:
         condition:
-          lambda: 'return !id(immich_fetch_started);'
+          lambda: 'return !id(immich_url).state.empty() && !id(immich_api_key_text).state.empty();'
         then:
-          - lambda: 'id(target_slot) = 0;'
-          - script.execute: immich_fetch_into_slot
+          - lvgl.page.show: slideshow_page
+          - delay: 2s
+          - if:
+              condition:
+                lambda: 'return !id(immich_fetch_started);'
+              then:
+                - lambda: 'id(target_slot) = 0;'
+                - script.execute: immich_fetch_into_slot
+        else:
+          - lambda: |-
+              auto ip = wifi::global_wifi_component->get_ip_address();
+              std::string url = "http://" + ip.str();
+              lv_label_set_text(id(setup_ip_label), url.c_str());
+          - lvgl.page.show: immich_setup_page
   on_disconnect:
     - if:
         condition:

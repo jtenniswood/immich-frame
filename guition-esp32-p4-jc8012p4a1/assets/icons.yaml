@@ -5,6 +5,8 @@ font:
     bpp: 4
     glyphs:
       - "\U000F05A9"  # mdi-wifi
+      - "\U000F0493"  # mdi-cog
 
 substitutions:
   icon_wifi: "\U000F05A9"
+  icon_cog: "\U000F0493"

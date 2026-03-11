@@ -38,6 +38,7 @@ text:
           while (!url.empty() && url.back() == '/') url.pop_back();
           id(immich_url).publish_state(url);
           ESP_LOGI("immich", "Immich URL configured: %s", url.c_str());
+      - script.execute: immich_check_config_ready
 
   - platform: template
     name: "Immich API Key"
@@ -53,3 +54,16 @@ text:
           if (x.empty()) return;
           id(immich_api_key_text).publish_state(x);
           ESP_LOGI("immich", "Immich API key configured (%d chars)", x.length());
+      - script.execute: immich_check_config_ready
+
+script:
+  - id: immich_check_config_ready
+    mode: single
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(immich_url).state.empty() && !id(immich_api_key_text).state.empty() && !id(immich_fetch_started);'
+          then:
+            - lvgl.page.show: slideshow_page
+            - lambda: 'id(target_slot) = 0;'
+            - script.execute: immich_fetch_into_slot

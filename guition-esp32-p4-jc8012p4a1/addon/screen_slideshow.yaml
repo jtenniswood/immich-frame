@@ -786,6 +786,7 @@ lvgl:
                         clickable: false
         - obj:
             id: info_overlay
+            hidden: true
             align: BOTTOM_LEFT
             x: 45
             y: -10
@@ -991,6 +992,7 @@ script:
           }
           lv_label_set_text(id(time_ago_label), ago.c_str());
           lv_label_set_text(id(time_ago_label_shadow), ago.c_str());
+      - lambda: 'lv_obj_clear_flag(id(info_overlay), LV_OBJ_FLAG_HIDDEN);'
       - script.execute: extract_accent_color
       - if:
           condition:
