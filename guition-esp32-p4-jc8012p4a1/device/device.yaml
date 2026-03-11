@@ -56,14 +56,8 @@ external_components:
       type: git
       url: https://github.com/jtenniswood/immich-frame
       ref: main
-      path: guition-esp32-p4-jc8012p4a1/components
-    components: [gsl3680]
-  - source:
-      type: git
-      url: https://github.com/jtenniswood/immich-frame
-      ref: main
       path: components
-    components: [online_image]
+    components: [gsl3680, online_image]
     refresh: 0s
 
 # DSI PHY power rail

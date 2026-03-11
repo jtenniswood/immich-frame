@@ -1,6 +1,6 @@
 # Immich Frame (ESPHome, Standalone)
 
-*Last updated: 10 Mar 2026*
+*Last updated: 11 Mar 2026*
 
 ## Purpose
 
@@ -54,36 +54,83 @@ packages:
 
 ### 3-Slot Image Ring Buffer
 
-Three `online_image` components (`immich_img_0`, `immich_img_1`, `immich_img_2`) form a circular buffer. At any time one slot is **active** (displayed), and the system prefetches into the next two slots. Each slot stores its own metadata (asset ID, image URL, date, location, year, month, person).
+Three `online_image` components (`immich_img_0`, `immich_img_1`, `immich_img_2`) form a circular buffer. At any time one slot is **active** (displayed), and the system prefetches into the next two slots. Each slot stores its own metadata (asset ID, image URL, date, location, year, month, person, is_portrait, datetime, companion_url, zoom).
 
 When advancing forward, the active slot index moves `(active + 1) % 3`. If that slot is already prefetched, display is instant. Otherwise, a fresh API call fetches into it.
 
+### Portrait Detection and Dual Display
+
+When fetching an image, EXIF dimensions (`exifImageWidth`, `exifImageHeight`) and `orientation` are parsed to determine whether the photo is portrait. EXIF orientations 5–8 swap width and height before comparison. If `height > width`, the image is flagged as portrait.
+
+When a portrait is displayed, the system searches Immich for a **companion portrait** taken on the same calendar day. If one is found, both portraits are downloaded at half-width (640×1200) and displayed **side-by-side** in a `portrait_pair_container`, filling the 1280×800 screen more effectively than a single letterboxed portrait.
+
+The system uses four dedicated `online_image` components for portrait pairs:
+- **`immich_portrait_left`** and **`immich_portrait_right`** — for the currently displayed pair.
+- **`immich_portrait_preload_left`** and **`immich_portrait_preload_right`** — for prefetching the next portrait pair during the prefetch chain, enabling instant transitions.
+
+If no companion is found or the companion download fails, the portrait falls back to single-image display in the standard slot.
+
+### Landscape Zoom
+
+For landscape images with aspect ratios between 1.6:1 and 2.0:1 (mildly panoramic), a zoom level is calculated to fill the 800px display height, slightly cropping the sides. The zoom value is stored per-slot as a `uint16_t` (256 = no zoom, higher = more zoom). LVGL's `lv_img_set_zoom` applies it at display time. Images wider than 2.0:1 are not zoomed (too panoramic to crop usefully).
+
 ### Previous Image Navigation
 
-One previous image is stored separately (`immich_prev_*` globals). Swiping right swaps current and previous metadata, re-downloads the previous image URL into the newly active slot.
+One previous image is stored separately (`immich_prev_*` globals, including zoom level). Swiping right swaps current and previous metadata, re-downloads the previous image URL into the newly active slot.
 
 ## Data Flow
 
 ### Forward Advance (timer, swipe left, or long press)
 
-1. Save current metadata to `immich_prev_*` globals.
-2. Advance `active_slot` to `(active + 1) % 3`.
-3. If next slot is already prefetched (`slotN_ready`), display instantly and kick off prefetch chain.
-4. Otherwise, set `target_slot` and run `immich_fetch_into_slot`.
+1. Save current metadata (including zoom) to `immich_prev_*` globals.
+2. Reset portrait pair state (`portrait_left_ready`, `portrait_right_ready`, `portrait_companion_found`, `immich_is_portrait_pair`, `portrait_using_preload`).
+3. Advance `active_slot` to `(active + 1) % 3`.
+4. If next slot is already prefetched (`slotN_ready`), display instantly and kick off prefetch chain.
+5. Otherwise, set `target_slot` and run `immich_fetch_into_slot`.
 
 ### Fetch Into Slot
 
 1. `POST ${immich_base_url}/api/search/random` with `{"size":1,"type":"IMAGE","withExif":true,"withPeople":true}`.
-2. Parse response for asset `id`, `localDateTime`, `exifInfo` (city, country, dateTimeOriginal), and `people` (first person name).
-3. Build image URL: `${immich_base_url}/api/assets/{id}/thumbnail?size=preview` (no query key).
-4. Store parsed metadata into the target slot's globals.
-5. Trigger `online_image.set_url` on the corresponding image component.
+2. Parse response for asset `id`, `localDateTime`, `exifInfo` (city, country, dateTimeOriginal, exifImageWidth, exifImageHeight, orientation), and `people` (first person name).
+3. Determine portrait status from EXIF dimensions (accounting for orientation tags 5–8 which swap axes). Calculate zoom for mildly panoramic landscapes.
+4. Build image URL: `${immich_base_url}/api/assets/{id}/thumbnail?size=preview`.
+5. Store parsed metadata (including `is_portrait`, `datetime`, `companion_url`, `zoom`) into the target slot's globals.
+6. Trigger `online_image.set_url` on the corresponding image component.
 
 ### Image Download Callback
 
 1. `on_download_finished` marks slot as ready, resets error retries.
 2. If this slot is the active slot, copy its metadata to the current display globals and run `immich_display_current`.
-3. Trigger `immich_prefetch_chain` to fill the next empty slot(s).
+3. If this slot is **not** the active slot and is portrait, trigger `immich_fetch_portrait_companion` to search for a companion portrait and begin preloading the pair.
+4. Otherwise, trigger `immich_prefetch_chain` to fill the next empty slot(s).
+
+### Display Current (`immich_display_current`)
+
+1. Show the standard `slideshow_img` and hide the `portrait_pair_container`.
+2. Update `slideshow_img` source to the active slot's image and apply the slot's zoom level.
+3. Update overlay labels (location, time ago).
+4. Run accent color extraction.
+5. **Portrait preload check:** If the active slot is portrait and portrait preload data is ready for this slot, instantly switch to portrait pair display using the preloaded images.
+6. **Portrait companion check:** If the active slot is portrait but no preloaded pair is available, start downloading the left (primary) portrait and either use the already-known companion URL or trigger `immich_fetch_portrait_companion` to find one.
+
+### Companion Portrait Search (`immich_fetch_portrait_companion`)
+
+1. Extract the calendar date (first 10 characters) from the portrait's `localDateTime`.
+2. `POST ${immich_base_url}/api/search/random` with `{"size":10,"type":"IMAGE","withExif":true,"takenAfter":"YYYY-MM-DDT00:00:00.000Z","takenBefore":"YYYY-MM-DDT23:59:59.999Z"}`.
+3. Iterate results, skip the primary asset, and check EXIF dimensions for portrait orientation.
+4. If a companion is found:
+   - If the target slot is the **active** slot, start downloading into `immich_portrait_right` immediately.
+   - If the target slot is a **prefetch** slot, start preloading both halves into `immich_portrait_preload_left` and `immich_portrait_preload_right`.
+5. Store the companion URL in the slot's `companion_url` global so it's available for instant use when that slot becomes active.
+6. Continue the prefetch chain regardless of companion search outcome.
+
+### Display Portrait Pair (`immich_display_portrait_pair`)
+
+1. Called when both `portrait_left_ready` and `portrait_right_ready` are true.
+2. Hide `slideshow_img`, show `portrait_pair_container`.
+3. Update `portrait_left_img` and `portrait_right_img` sources.
+4. Update overlay labels and run accent color extraction.
+5. Continue the prefetch chain.
 
 ### Prefetch Chain
 
@@ -95,6 +142,12 @@ Checks the two slots ahead of `active_slot`. Fetches into the first one that isn
   - `POST ${immich_base_url}/api/search/random`
   - Headers: `Content-Type: application/json`, `Accept: application/json`, `x-api-key: ${immich_api_key}`
   - Body: `{"size":1,"type":"IMAGE","withExif":true,"withPeople":true}`
+
+- **Companion portrait search (same-day portraits):**
+  - `POST ${immich_base_url}/api/search/random`
+  - Headers: `Content-Type: application/json`, `Accept: application/json`, `x-api-key: ${immich_api_key}`
+  - Body: `{"size":10,"type":"IMAGE","withExif":true,"takenAfter":"YYYY-MM-DDT00:00:00.000Z","takenBefore":"YYYY-MM-DDT23:59:59.999Z"}`
+  - Response is filtered client-side: skip the primary asset, check EXIF for portrait orientation, use the first match.
 
 - **Rendered image bytes:**
   - `GET ${immich_base_url}/api/assets/{id}/thumbnail?size=preview`
@@ -130,14 +183,15 @@ Tunable defaults in `addon/immich.yaml`:
 
 ### Main Page
 
-- **`slideshow_img`** -- Full-screen LVGL image widget displaying the active slot's image.
-- **`info_overlay`** -- Transparent container anchored to bottom-left (no background bar). Tap image to toggle visibility. Uses a flex ROW layout with the clock on the left and metadata stacked vertically to its right.
-  - **`time_label`** -- Current time (HH:MM) in Roboto Light 150px, updated every 60s via SNTP.
-  - **`time_ago_label`** -- Relative photo age ("3 years ago") in Roboto Light 46px.
-  - **`location_label`** -- Photo location (city, country) in Roboto Light 32px.
+- **`slideshow_img`** — Full-screen LVGL image widget displaying the active slot's image. Zoom level is applied per-slot via `lv_img_set_zoom`. Hidden when a portrait pair is active.
+- **`portrait_pair_container`** — Hidden by default. A 1280×800 flex ROW container with two 640×800 child objects, each containing an image widget (`portrait_left_img`, `portrait_right_img`). Shown when a portrait pair is displayed; supports the same touch gestures as `slideshow_img`. Each portrait image is resized to 640×1200 and centred within its half.
+- **`info_overlay`** — Transparent container anchored to bottom-left (no background bar). Tap image to toggle visibility. Uses a flex ROW layout with the clock on the left and metadata stacked vertically to its right.
+  - **`time_label`** — Current time (HH:MM) in Roboto Light 150px, updated every 60s via SNTP.
+  - **`time_ago_label`** — Relative photo age ("3 years ago") in Roboto Light 46px.
+  - **`location_label`** — Photo location (city, country) in Roboto Light 32px.
   - Each label has a paired `*_shadow` label rendered behind it (same text, black at 50% opacity, offset 2px right and 2px down) for readability over photos.
-- **`loading_screen`** -- Shown on boot with "Starting up" text and a progress bar. Hidden after WiFi connects or 10s grace period.
-- **`wifi_setup_prompt`** -- WiFi icon + instructions to connect to the captive portal hotspot. Shown when WiFi disconnects after boot grace period.
+- **`loading_screen`** — Shown on boot with "Starting up" text and a progress bar. Hidden after WiFi connects or 10s grace period.
+- **`wifi_setup_prompt`** — WiFi icon + instructions to connect to the captive portal hotspot. Shown when WiFi disconnects after boot grace period.
 
 ### Touch Gestures
 
@@ -147,6 +201,8 @@ Tunable defaults in `addon/immich.yaml`:
 | Swipe right | dx > 80px | Show previous image |
 | Tap | \|dx\| <= 80px | Toggle info overlay |
 | Long press | -- | Advance to next image |
+
+Both `slideshow_img` and `portrait_pair_container` handle these gestures identically.
 
 ## Boot Sequence
 
@@ -162,17 +218,21 @@ Tunable defaults in `addon/immich.yaml`:
 - **Error retry:** Up to 3 retries with 2s delay on image decode failure, then gives up and resets counter.
 - **WiFi disconnect:** Shows captive portal setup prompt (after boot grace period).
 - **Slot readiness:** Forward advance blocks display until the slot's image has fully downloaded; current image remains on screen until then.
+- **Portrait fallback:** If portrait companion search fails or either portrait image fails to decode, the system falls back to single-image display.
+- **Portrait state reset:** On every advance (forward or backward), all portrait pair state is reset to prevent stale data.
 
 ## Accent Color
 
-The `extract_accent_color` script (in `addon/accent_color.yaml`) samples the displayed image and derives a dominant colour for the `main_page` background, so letter-boxed areas complement the photo instead of staying plain black.
+The `extract_accent_color` script (in `addon/accent_color.yaml`) samples the displayed image and derives a dominant colour for letter-boxed areas, so they complement the photo instead of staying plain black.
 
 ### How It Works
 
-1. A 20×20 grid of pixels is sampled from the active slot's raw RGB565 buffer (read little-endian to match the display byte order).
-2. Each pixel's saturation (max channel − min channel) is computed. The weight is `sat² + 1`, so vivid colours dominate while blacks, whites, and greys contribute minimally.
-3. A weighted average produces the accent RGB. This is darkened to one-third intensity (`r/3, g/3, b/3`) so the background doesn't overpower the photo.
-4. The darkened colour is applied to the LVGL page at runtime.
+1. The sampling logic is encapsulated in a reusable `fill_accent` lambda that operates on any `esphome::image::Image*`.
+2. A 20×20 grid of pixels is sampled from the image's RGB565 buffer (read little-endian to match the display byte order), skipping letterbox padding by scanning inward from the edges for the first non-zero pixel.
+3. Each pixel's saturation (max channel − min channel) is computed. The weight is `sat² + 1`, so vivid colours dominate while blacks, whites, and greys contribute minimally.
+4. A weighted average produces the accent RGB. This is darkened to half intensity (`r/2, g/2, b/2`) so the background doesn't overpower the photo.
+5. The darkened colour is written directly into the letterbox pixels of the raw image buffer.
+6. For **portrait pairs**, `fill_accent` is called on both the left and right portrait images (or their preloaded equivalents), and the `portrait_pair_container` is invalidated. For **single images**, it is called on the active slot's image and `slideshow_img` is invalidated.
 
 ### LVGL Background Color Caveat
 
@@ -194,8 +254,10 @@ Also note that ESPHome's `LvPageType*` is not a raw LVGL object pointer — use 
 
 - Only one previous image is stored; you cannot swipe back more than once.
 - `immich_verify_ssl: false` is convenient for self-signed cert setups but not ideal long-term.
-- Image resize is fixed at 1280x960 (landscape). Portrait photos will be letter-boxed.
+- Standard landscape images are resized to 1280×960. Portrait images for pair display are resized to 640×1200 each.
 - SNTP timezone is hardcoded to `Europe/London` in `addon/time.yaml`.
+- Companion portrait search fetches up to 10 random same-day images and uses the first portrait match; it does not guarantee the best pairing.
+- Images wider than 2.0:1 aspect ratio are not zoomed (displayed with letterboxing).
 
 ## Troubleshooting
 
@@ -205,6 +267,8 @@ Also note that ESPHome's `LvPageType*` is not a raw LVGL object pointer — use 
 - **`Slot N decode failed`**: Image too large or corrupt. Will retry up to 3 times then skip.
 - **WiFi setup screen appears**: Device lost WiFi. Connect to the captive portal hotspot shown on screen.
 - **Timer says "skipped, last advance Xms ago"**: A manual swipe happened recently; timer will resume after the debounce window.
+- **`Portrait left/right decode failed, falling back to single`**: One of the portrait pair images failed to download or decode. The system falls back to single-image display.
+- **`No companion portrait found for this day`**: No other portrait photo exists on the same calendar day in Immich. The portrait is shown alone.
 
 ## Future Improvements
 
@@ -212,4 +276,4 @@ Also note that ESPHome's `LvPageType*` is not a raw LVGL object pointer — use 
 2. Add album/favorites/people/date-range filters to the `/search/random` request body.
 3. Support deeper backward navigation history (ring buffer of previous URLs).
 4. Add screen dimming schedule or ambient light sensor integration.
-5. Configurable image resize dimensions for portrait vs landscape orientation.
+5. Smarter companion portrait matching (prefer similar location, people, or time-of-day).
