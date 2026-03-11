@@ -401,7 +401,7 @@ script:
           auto &meta = (s == 0) ? id(slot0) : (s == 1) ? id(slot1) : id(slot2);
           lv_img_set_zoom(id(slideshow_img), meta.zoom);
       - script.execute: update_photo_metadata_labels
-      - lambda: 'lv_obj_clear_flag(id(info_overlay), LV_OBJ_FLAG_HIDDEN);'
+      - lambda: 'lv_obj_clear_flag(id(metadata_container), LV_OBJ_FLAG_HIDDEN);'
       - script.execute: hide_info_overlay
       - script.execute: extract_accent_color
       - if:

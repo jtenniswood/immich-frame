@@ -266,11 +266,11 @@ script:
           } else if (dx > SWIPE_THRESHOLD_PX) {
             id(immich_show_previous).execute();
           } else {
-            if (lv_obj_has_flag(id(info_overlay), LV_OBJ_FLAG_HIDDEN)) {
-              lv_obj_clear_flag(id(info_overlay), LV_OBJ_FLAG_HIDDEN);
+            if (lv_obj_has_flag(id(metadata_container), LV_OBJ_FLAG_HIDDEN)) {
+              lv_obj_clear_flag(id(metadata_container), LV_OBJ_FLAG_HIDDEN);
               id(hide_info_overlay).execute();
             } else {
-              lv_obj_add_flag(id(info_overlay), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_add_flag(id(metadata_container), LV_OBJ_FLAG_HIDDEN);
               id(hide_info_overlay).stop();
             }
           }
@@ -282,5 +282,5 @@ script:
             lambda: 'return id(info_overlay_timeout).state > 0;'
           then:
             - delay: !lambda 'return (uint32_t)(id(info_overlay_timeout).state * 1000);'
-            - lambda: 'lv_obj_add_flag(id(info_overlay), LV_OBJ_FLAG_HIDDEN);'
+            - lambda: 'lv_obj_add_flag(id(metadata_container), LV_OBJ_FLAG_HIDDEN);'
 
