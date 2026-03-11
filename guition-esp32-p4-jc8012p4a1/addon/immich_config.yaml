@@ -14,19 +14,29 @@ text:
   - platform: template
     name: "Immich URL"
     id: immich_url
-    optimistic: true
+    optimistic: false
     restore_value: true
     min_length: 0
     max_length: 255
     mode: text
     icon: "mdi:web"
+    set_action:
+      - lambda: |-
+          if (x.empty()) return;
+          id(immich_url).publish_state(x);
+          ESP_LOGI("immich", "Immich URL configured: %s", x.c_str());
 
   - platform: template
     name: "Immich API Key"
     id: immich_api_key_text
-    optimistic: true
+    optimistic: false
     restore_value: true
     min_length: 0
     max_length: 255
     mode: password
     icon: "mdi:key"
+    set_action:
+      - lambda: |-
+          if (x.empty()) return;
+          id(immich_api_key_text).publish_state(x);
+          ESP_LOGI("immich", "Immich API key configured (%d chars)", x.length());
