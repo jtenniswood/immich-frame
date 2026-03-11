@@ -1076,10 +1076,73 @@ script:
                               id(immich_photo_person) = id(slot2_person); id(immich_last_asset_id) = id(slot2_asset_id);
                               id(immich_last_image_url) = id(slot2_image_url);
                             }
-                            id(active_slot_displayed) = true;
-                            ESP_LOGI("immich", "Instant display slot %d: %s", s, id(immich_last_asset_id).c_str());
-                        - script.execute: immich_display_current
-                        - script.execute: immich_prefetch_chain
+                            bool is_p = (s == 0) ? id(slot0_is_portrait) : (s == 1) ? id(slot1_is_portrait) : id(slot2_is_portrait);
+                            if (!is_p) {
+                              id(active_slot_displayed) = true;
+                            }
+                            ESP_LOGI("immich", "Instant display slot %d: %s (portrait=%d)", s, id(immich_last_asset_id).c_str(), is_p);
+                        - if:
+                            condition:
+                              lambda: |-
+                                int s = id(active_slot);
+                                bool is_p = (s == 0) ? id(slot0_is_portrait) : (s == 1) ? id(slot1_is_portrait) : id(slot2_is_portrait);
+                                return !is_p;
+                            then:
+                              - script.execute: immich_display_current
+                              - script.execute: immich_prefetch_chain
+                        - if:
+                            condition:
+                              lambda: |-
+                                int s = id(active_slot);
+                                bool is_p = (s == 0) ? id(slot0_is_portrait) : (s == 1) ? id(slot1_is_portrait) : id(slot2_is_portrait);
+                                return is_p && id(portrait_preload_slot) == s
+                                       && id(portrait_preload_left_ready) && id(portrait_preload_right_ready);
+                            then:
+                              - script.execute: immich_display_current
+                              - script.execute: immich_prefetch_chain
+                        - if:
+                            condition:
+                              lambda: |-
+                                int s = id(active_slot);
+                                bool is_p = (s == 0) ? id(slot0_is_portrait) : (s == 1) ? id(slot1_is_portrait) : id(slot2_is_portrait);
+                                return is_p && !(id(portrait_preload_slot) == s
+                                       && id(portrait_preload_left_ready) && id(portrait_preload_right_ready));
+                            then:
+                              - lambda: |-
+                                  int s = id(active_slot);
+                                  std::string comp = (s == 0) ? id(slot0_companion_url) : (s == 1) ? id(slot1_companion_url) : id(slot2_companion_url);
+                                  std::string aid = (s == 0) ? id(slot0_asset_id) : (s == 1) ? id(slot1_asset_id) : id(slot2_asset_id);
+                                  id(portrait_left_ready) = false;
+                                  id(portrait_right_ready) = false;
+                                  id(portrait_using_preload) = false;
+                                  id(portrait_primary_asset_id) = aid;
+                                  if (!comp.empty()) {
+                                    id(portrait_companion_found) = true;
+                                    id(portrait_companion_url) = comp;
+                                    ESP_LOGI("immich", "Advance portrait %s: companion URL known, downloading pair", aid.c_str());
+                                  } else {
+                                    std::string dt = (s == 0) ? id(slot0_datetime) : (s == 1) ? id(slot1_datetime) : id(slot2_datetime);
+                                    id(portrait_companion_found) = false;
+                                    id(portrait_companion_url) = "";
+                                    id(portrait_search_datetime) = dt;
+                                    id(companion_target_slot) = s;
+                                    ESP_LOGI("immich", "Advance portrait %s: no companion, searching", aid.c_str());
+                                  }
+                              - online_image.set_url:
+                                  id: immich_portrait_left
+                                  url: !lambda |-
+                                    int s = id(active_slot);
+                                    return (s == 0) ? id(slot0_image_url) : (s == 1) ? id(slot1_image_url) : id(slot2_image_url);
+                              - if:
+                                  condition:
+                                    lambda: 'return id(portrait_companion_found);'
+                                  then:
+                                    - online_image.set_url:
+                                        id: immich_portrait_right
+                                        url: !lambda 'return id(portrait_companion_url);'
+                                  else:
+                                    - script.execute: immich_fetch_portrait_companion
+                              - script.execute: immich_prefetch_chain
                       else:
                         - lambda: |-
                             id(target_slot) = id(active_slot);
