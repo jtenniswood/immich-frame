@@ -163,7 +163,7 @@ script:
           if (!now.is_valid()) return;
           int hour = now.hour;
           char buf[6];
-          if (id(clock_format_select).state == "12 Hour") {
+          if (id(clock_format_select).current_option() == "12 Hour") {
             hour = hour % 12;
             if (hour == 0) hour = 12;
             snprintf(buf, sizeof(buf), "%d:%02d", hour, now.minute);
