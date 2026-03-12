@@ -8,7 +8,7 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Install', link: '/install' },
-      { text: 'Docs', link: '/getting-started' },
+      { text: 'Docs', link: '/usage' },
       { text: 'GitHub', link: 'https://github.com/jtenniswood/espframe' },
     ],
 
@@ -17,7 +17,6 @@ export default defineConfig({
         text: 'Guide',
         items: [
           { text: 'Install', link: '/install' },
-          { text: 'Getting Started', link: '/getting-started' },
           { text: 'Usage', link: '/usage' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Creating an API Key', link: '/api-key' },

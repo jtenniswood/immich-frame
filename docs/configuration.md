@@ -28,7 +28,3 @@ See [Creating an API Key](/api-key) for how to generate a key and which permissi
 | **Show Clock** | On | Toggle the clock overlay on the slideshow screen |
 | **Clock Format** | 24 Hour | `24 Hour` or `12 Hour` |
 | **Timezone** | Europe/London | Select from a list of common timezones |
-
-## Compile-Time Options
-
-If you installed via the [Manual Setup](/manual-setup), you can override default values using ESPHome substitutions. See [Available substitutions](/manual-setup#available-substitutions) for the full list.
