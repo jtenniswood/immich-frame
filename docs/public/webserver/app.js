@@ -265,15 +265,19 @@
         if (!u || !k) return;
         nextBtn.disabled = true;
         nextBtn.textContent = "Saving\u2026";
-        Promise.all([
-          post(endpoints.immich_url + "/set", { value: u }),
-          post(endpoints.api_key + "/set", { value: k }),
-        ]).then(function () {
-          S.immich_url = u;
-          S.api_key = k;
-          step = 2;
-          showStep();
-        });
+        post(endpoints.immich_url + "/set", { value: u })
+          .then(function () {
+            return new Promise(function (r) { setTimeout(r, 500); });
+          })
+          .then(function () {
+            return post(endpoints.api_key + "/set", { value: k });
+          })
+          .then(function () {
+            S.immich_url = u;
+            S.api_key = k;
+            step = 2;
+            showStep();
+          });
       };
       nav.appendChild(nextBtn);
       card.appendChild(nav);
