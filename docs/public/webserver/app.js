@@ -78,9 +78,9 @@
 
   var endpoints = {
     immich_url: "/text/immich_url",
-    api_key: "/text/immich_api_key_text",
-    clock_format: "/select/clock_format_select",
-    timezone: "/select/timezone_select",
+    api_key: "/text/immich_api_key",
+    clock_format: "/select/clock_format",
+    timezone: "/select/timezone",
     interval: "/number/slideshow_interval",
     backlight: "/light/backlight",
     show_clock: "/switch/show_clock",
@@ -97,7 +97,14 @@
           })
           .join("&")
       : "";
-    return fetch(url + qs, { method: "POST" }).catch(function () {});
+    return fetch(url + qs, { method: "POST" })
+      .then(function (r) {
+        console.log("[POST] " + url + qs + " -> " + r.status);
+        return r;
+      })
+      .catch(function (err) {
+        console.error("[POST] " + url + qs + " -> FAILED", err);
+      });
   }
 
   function safeGet(url) {
@@ -119,15 +126,16 @@
 
   function collectState(d) {
     if (!d || !d.id) return;
+    console.log("[SSE] id=" + d.id, "value=" + (d.value != null ? d.value : d.state));
     var id = d.id;
     if (id === "text-immich_url") {
       S.immich_url = d.value || "";
-    } else if (id === "text-immich_api_key_text") {
+    } else if (id === "text-immich_api_key") {
       S.api_key = d.value || "";
-    } else if (id === "select-clock_format_select") {
+    } else if (id === "select-clock_format") {
       S.clock_format = d.value || "24 Hour";
       if (d.option && d.option.length) S.clock_options = d.option;
-    } else if (id === "select-timezone_select") {
+    } else if (id === "select-timezone") {
       S.timezone = d.value || "";
       if (d.option && d.option.length) S.tz_options = d.option;
     } else if (id === "number-slideshow_interval") {
@@ -611,7 +619,7 @@
     }
 
     // Logs
-    var logs = el("div", "card");
+    var logs = el("div", "card card-logs");
     logs.innerHTML = "<h3>Device Logs</h3>";
     var logToggle = el("button", "btn btn-secondary btn-sm");
     logToggle.textContent = "Show Logs";

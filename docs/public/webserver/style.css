@@ -117,9 +117,13 @@ select option{background:var(--surface);color:var(--text)}
 
 .version{text-align:center;font-size:.75rem;color:var(--text2);margin-top:8px;opacity:.6}
 
+.card-logs{
+  width:100vw;position:relative;left:50%;transform:translateX(-50%);
+  max-width:none;border-radius:0;
+}
 .log-output{
   margin-top:12px;padding:12px;background:#0d0d0d;border:1px solid var(--border);
   border-radius:6px;font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
-  font-size:.7rem;line-height:1.4;color:#b0b0b0;overflow-x:auto;overflow-y:auto;
-  max-height:300px;white-space:pre;word-break:break-all;
+  font-size:.75rem;line-height:1.5;color:#b0b0b0;overflow-x:auto;overflow-y:auto;
+  max-height:60vh;white-space:pre;word-break:break-all;
 }
