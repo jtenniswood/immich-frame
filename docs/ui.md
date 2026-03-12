@@ -31,7 +31,6 @@ Defined in `addon/screen_slideshow.yaml`. The main photo display, shown via `lvg
 |---|---|---|
 | Swipe left | dx < -80px | Advance to next image |
 | Swipe right | dx > 80px | Show previous image |
-| Tap | \|dx\| <= 80px | Toggle info overlay |
 | Long press | — | Advance to next image |
 
 Both `slideshow_img` and `portrait_pair_container` handle these gestures identically.

@@ -32,10 +32,9 @@ The `immich_display_current` script:
 
 1. Show the standard `slideshow_img` and hide the `portrait_pair_container`.
 2. Update `slideshow_img` source to the active slot's image and apply the slot's zoom level.
-3. Update overlay labels (location, time ago).
-4. Run accent color extraction.
-5. **Portrait preload check:** If the active slot is portrait and portrait preload data is ready for this slot, instantly switch to portrait pair display using the preloaded images.
-6. **Portrait companion check:** If the active slot is portrait but no preloaded pair is available, start downloading the left (primary) portrait and either use the already-known companion URL or trigger `immich_fetch_portrait_companion` to find one.
+3. Run accent color extraction.
+4. **Portrait preload check:** If the active slot is portrait and portrait preload data is ready for this slot, instantly switch to portrait pair display using the preloaded images.
+5. **Portrait companion check:** If the active slot is portrait but no preloaded pair is available, start downloading the left (primary) portrait and either use the already-known companion URL or trigger `immich_fetch_portrait_companion` to find one.
 
 ## Companion Portrait Search
 
@@ -57,7 +56,7 @@ The `immich_display_portrait_pair` script:
 1. Called when both `portrait_left_ready` and `portrait_right_ready` are true.
 2. Hide `slideshow_img`, show `portrait_pair_container`.
 3. Update `portrait_left_img` and `portrait_right_img` sources.
-4. Update overlay labels and run accent color extraction.
+4. Run accent color extraction.
 5. Continue the prefetch chain.
 
 ## Prefetch Chain

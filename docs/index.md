@@ -24,7 +24,7 @@ features:
   - title: Smooth Prefetching
     details: A 3-slot ring buffer prefetches upcoming images so transitions are instant, with hardware-accelerated JPEG decoding.
   - title: Touch Gestures
-    details: Swipe left/right to navigate, tap to toggle the info overlay, and long press to advance. Works on both single images and portrait pairs.
+    details: Swipe left/right to navigate and long press to advance. Works on both single images and portrait pairs.
   - title: Accent Color Fill
     details: Samples the displayed photo to extract a dominant colour, filling letterboxed areas with a complementary tint instead of plain black.
   - title: Runtime Configuration
