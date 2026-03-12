@@ -16,6 +16,7 @@ export default defineConfig({
       {
         text: 'Guide',
         items: [
+          { text: 'Overview', link: '/' },
           { text: 'Install', link: '/install' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Creating an API Key', link: '/api-key' },
