@@ -1,16 +1,6 @@
 # Install
 
-Flash Immich Frame directly from your browser — no toolchain needed.
-
-## Web Installer
-
-Connect your Guition ESP32-P4 (JC8012P4A1) via USB-C and click the button below.
-
-<EspInstallButton />
-
-::: info Browser Support
-The web installer requires **Chrome** or **Edge** on desktop with [WebSerial](https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API) support. Safari and Firefox are not supported.
-:::
+Flash Immich Frame directly from your browser.
 
 ## What You'll Need
 
@@ -23,6 +13,17 @@ The web installer requires **Chrome** or **Edge** on desktop with [WebSerial](ht
 
 - **Panel:** [AliExpress](https://s.click.aliexpress.com/e/_c4LLo3rH)
 - **Stand:** [MakerWorld](https://makerworld.com/en/models/2490049-guition-p4-10inch-screen-stand#profileId-2736046)
+
+
+## Web Installer
+
+Connect your Guition ESP32-P4 (JC8012P4A1) via USB-C and click the button below.
+
+<EspInstallButton />
+
+::: info Browser Support
+The web installer requires **Chrome** or **Edge** on desktop with [WebSerial](https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API) support. Safari and Firefox are not supported.
+:::
 
 ## Step-by-Step
 

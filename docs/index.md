@@ -5,6 +5,9 @@ hero:
   name: Immich Frame
   text: Standalone Digital Photo Frame
   tagline: Display your Immich photo library on a Guition ESP32-P4 — no Home Assistant required.
+  image:
+    src: /immich-frame.png
+    alt: Immich Frame displaying photos on a Guition ESP32-P4 10-inch screen
   actions:
     - theme: brand
       text: Get Started

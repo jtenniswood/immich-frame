@@ -11,14 +11,8 @@
 **Image doesn't change even though logs show new asset IDs**
 :   Usually an SSL or auth issue with the image download endpoint. If you're using a self-signed certificate, make sure `immich_verify_ssl` is set to `false` (the default).
 
-**"Slot N decode failed"**
-:   The image was too large or corrupt. The frame retries up to 3 times, then skips to the next photo. No action needed — this is handled automatically.
-
 **WiFi setup screen appears unexpectedly**
 :   The device lost its WiFi connection. Connect to the hotspot shown on screen and reconfigure, or check that your router is reachable.
-
-**The slideshow timer skips / says "last advance Xms ago"**
-:   A manual swipe happened recently. The timer pauses briefly after manual navigation to prevent double-advances. It resumes automatically.
 
 **"Portrait left/right decode failed, falling back to single"**
 :   One of the paired portrait images failed to download. The frame falls back to showing the single portrait — no action needed.
@@ -32,13 +26,3 @@
 - Standard landscape images are resized to 1280x960. Portrait pairs are resized to 640x1200 each.
 - Very wide panoramas (wider than 2:1 aspect ratio) are shown with letterboxing rather than zoomed.
 - The companion portrait search picks from up to 10 random same-day photos — it doesn't guarantee the best pairing.
-
-## Still Stuck?
-
-Check the ESPHome logs for more details:
-
-```bash
-esphome logs esphome.yaml
-```
-
-This streams the device's live debug output over WiFi, including API responses and image download status.
