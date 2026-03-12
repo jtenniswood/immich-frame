@@ -2,15 +2,15 @@ packages:
   device:          !include device/device.yaml
   fonts:           !include assets/fonts.yaml
   icons:           !include assets/icons.yaml
-  lvgl_base:       !include addon/lvgl_base.yaml
+  lvgl_base:       !include device/lvgl_base.yaml
   connectivity:    !include addon/connectivity.yaml
   immich_config:   !include addon/immich_config.yaml
   backlight:       !include addon/backlight.yaml
   time_sync:       !include addon/time.yaml
   accent_color:    !include addon/accent_color.yaml
-  screen_loading:  !include addon/screen_loading.yaml
-  screen_wifi:     !include addon/screen_wifi_setup.yaml
-  screen_setup:    !include addon/screen_immich_setup.yaml
+  screen_loading:  !include device/screen_loading.yaml
+  screen_wifi:     !include device/screen_wifi_setup.yaml
+  screen_setup:    !include device/screen_immich_setup.yaml
   immich_api:      !include addon/immich_api.yaml
   immich_slide:    !include addon/immich_slideshow.yaml
-  screen_slide:    !include addon/screen_slideshow.yaml
+  screen_slide:    !include device/screen_slideshow.yaml
