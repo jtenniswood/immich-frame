@@ -7,6 +7,9 @@ on:
       - 'docs/**'
       - 'package.json'
       - 'package-lock.json'
+  workflow_run:
+    workflows: ["Build Release"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -24,6 +27,9 @@ env:
 jobs:
   deploy-docs:
     name: Build & Deploy Docs
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -1,4 +1,4 @@
-name: Build & Deploy
+name: Build Release
 
 on:
   release:
@@ -7,12 +7,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -90,48 +84,3 @@ jobs:
           output/immich-frame.ota.bin
           output/manifest.json
           --clobber
-
-  deploy-pages:
-    name: Deploy to GitHub Pages
-    needs: build-firmware
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-
-      - name: Download firmware artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: firmware
-          path: firmware/
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build docs
-        run: npm run docs:build
-
-      - name: Copy firmware into docs output
-        run: |
-          mkdir -p docs/.vitepress/dist/firmware
-          cp firmware/manifest.json docs/.vitepress/dist/firmware/
-          cp firmware/*.factory.bin docs/.vitepress/dist/firmware/
-          cp firmware/*.ota.bin docs/.vitepress/dist/firmware/
-
-      - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: docs/.vitepress/dist
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
