@@ -450,15 +450,21 @@
       }
 
       var btnRow = el("div", "field");
+      btnRow.style.display = "flex";
+      btnRow.style.gap = "8px";
+      btnRow.style.alignItems = "center";
       var checkBtn = el("button", "btn btn-secondary btn-sm");
       checkBtn.textContent = "Check for Update";
+      var statusMsg = el("span");
+      statusMsg.style.cssText = "font-size:.8rem;color:var(--text2)";
       checkBtn.onclick = function () {
         checkBtn.disabled = true;
         checkBtn.textContent = "Checking\u2026";
+        statusMsg.textContent = "";
         post("/button/check_for_update/press")
           .then(function () {
             return new Promise(function (r) {
-              setTimeout(r, 3000);
+              setTimeout(r, 4000);
             });
           })
           .then(function () {
@@ -469,17 +475,37 @@
             checkBtn.textContent = "Check for Update";
             if (
               data &&
-              data.installed_version &&
+              data.current_version &&
               data.latest_version &&
-              data.installed_version !== data.latest_version
+              data.current_version !== data.latest_version
             ) {
               S.update_available = true;
               S.latest_version = data.latest_version;
-              renderSettings();
+              statusMsg.textContent = "";
+              btnRow.innerHTML = "";
+              var updateInfo = el("div");
+              updateInfo.style.cssText = "width:100%";
+              updateInfo.innerHTML =
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+                '<span style="font-size:.85rem;color:var(--accent)">' +
+                esc(data.latest_version) + " available</span></div>";
+              var installBtn = el("button", "btn btn-primary btn-sm");
+              installBtn.textContent = "Install Now";
+              installBtn.onclick = function () {
+                installBtn.disabled = true;
+                installBtn.textContent = "Installing\u2026";
+                post("/update/firmware_update/install");
+              };
+              updateInfo.appendChild(installBtn);
+              btnRow.appendChild(updateInfo);
+            } else {
+              statusMsg.textContent = "You\u2019re on the latest version";
+              statusMsg.style.color = "var(--success)";
             }
           });
       };
       btnRow.appendChild(checkBtn);
+      btnRow.appendChild(statusMsg);
       fw.appendChild(btnRow);
       wrap.appendChild(fw);
     }
