@@ -25,6 +25,7 @@ export default defineConfig({
       {
         text: 'Advanced',
         items: [
+          { text: 'Home Assistant', link: '/home-assistant' },
           { text: 'Manual Setup', link: '/manual-setup' },
           { text: 'Troubleshooting', link: '/troubleshooting' },
         ],
