@@ -45,7 +45,7 @@ logger:
 
 web_server:
   port: 80
-  version: 2
+  version: 3
   css_url: "https://jtenniswood.github.io/espframe/webserver/style.css"
   js_url: "https://jtenniswood.github.io/espframe/webserver/app.js"
 
