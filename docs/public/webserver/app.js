@@ -569,6 +569,42 @@
       wrap.appendChild(fw);
     }
 
+    // Logs
+    var logs = el("div", "card");
+    logs.innerHTML = "<h3>Device Logs</h3>";
+    var logToggle = el("button", "btn btn-secondary btn-sm");
+    logToggle.textContent = "Show Logs";
+    var logWrap = el("div");
+    logWrap.style.display = "none";
+    var logPre = document.createElement("pre");
+    logPre.className = "log-output";
+    var logLines = [];
+    var maxLines = 200;
+
+    logToggle.onclick = function () {
+      var visible = logWrap.style.display !== "none";
+      logWrap.style.display = visible ? "none" : "block";
+      logToggle.textContent = visible ? "Show Logs" : "Hide Logs";
+      if (!visible) logPre.scrollTop = logPre.scrollHeight;
+    };
+
+    logWrap.appendChild(logPre);
+    logs.appendChild(logToggle);
+    logs.appendChild(logWrap);
+    wrap.appendChild(logs);
+
+    if (evtSource) {
+      evtSource.addEventListener("log", function (e) {
+        var line = e.data;
+        logLines.push(line);
+        if (logLines.length > maxLines) logLines.shift();
+        logPre.textContent = logLines.join("\n");
+        if (logWrap.style.display !== "none") {
+          logPre.scrollTop = logPre.scrollHeight;
+        }
+      });
+    }
+
     app.appendChild(wrap);
 
     if (S.firmware) {

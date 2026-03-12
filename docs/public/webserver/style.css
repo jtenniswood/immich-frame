@@ -116,3 +116,10 @@ select option{background:var(--surface);color:var(--text)}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 .version{text-align:center;font-size:.75rem;color:var(--text2);margin-top:8px;opacity:.6}
+
+.log-output{
+  margin-top:12px;padding:12px;background:#0d0d0d;border:1px solid var(--border);
+  border-radius:6px;font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.7rem;line-height:1.4;color:#b0b0b0;overflow-x:auto;overflow-y:auto;
+  max-height:300px;white-space:pre;word-break:break-all;
+}
