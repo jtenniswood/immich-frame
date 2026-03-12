@@ -285,21 +285,20 @@
       card.innerHTML = "<h3>Clock & Timezone</h3>";
 
       var f1 = field("Clock Format");
-      var seg = el("div", "segment");
+      var fmtSel = document.createElement("select");
+      fmtSel.className = "select";
       S.clock_options.forEach(function (opt) {
-        var b = document.createElement("button");
-        b.textContent = opt;
-        b.className = opt === S.clock_format ? "active" : "";
-        b.onclick = function () {
-          post(endpoints.clock_format + "/set", { option: opt });
-          S.clock_format = opt;
-          seg.querySelectorAll("button").forEach(function (x) {
-            x.className = x.textContent === opt ? "active" : "";
-          });
-        };
-        seg.appendChild(b);
+        var o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === S.clock_format) o.selected = true;
+        fmtSel.appendChild(o);
       });
-      f1.appendChild(seg);
+      fmtSel.onchange = function () {
+        S.clock_format = fmtSel.value;
+        post(endpoints.clock_format + "/set", { option: fmtSel.value });
+      };
+      f1.appendChild(fmtSel);
       card.appendChild(f1);
 
       var f2 = field("Timezone");
@@ -461,21 +460,20 @@
     clk.appendChild(f5);
 
     var f6 = field("Format");
-    var seg = el("div", "segment");
+    var fmtSel = document.createElement("select");
+    fmtSel.className = "select";
     S.clock_options.forEach(function (opt) {
-      var b = document.createElement("button");
-      b.textContent = opt;
-      b.className = opt === S.clock_format ? "active" : "";
-      b.onclick = function () {
-        post(endpoints.clock_format + "/set", { option: opt });
-        S.clock_format = opt;
-        seg.querySelectorAll("button").forEach(function (x) {
-          x.className = x.textContent === opt ? "active" : "";
-        });
-      };
-      seg.appendChild(b);
+      var o = document.createElement("option");
+      o.value = opt;
+      o.textContent = opt;
+      if (opt === S.clock_format) o.selected = true;
+      fmtSel.appendChild(o);
     });
-    f6.appendChild(seg);
+    fmtSel.onchange = function () {
+      S.clock_format = fmtSel.value;
+      post(endpoints.clock_format + "/set", { option: fmtSel.value });
+    };
+    f6.appendChild(fmtSel);
     clk.appendChild(f6);
 
     var f7 = field("Timezone");
