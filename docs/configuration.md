@@ -24,7 +24,7 @@ Open `http://<device-ip>/` in your browser to access the settings page. Changes 
 
 | Setting | Default | Description |
 |---|---|---|
-| **Show Clock** | Off | Toggle the clock on the info overlay |
+| **Show Clock** | On | Toggle the clock on the info overlay |
 | **Clock Format** | 24 Hour | `24 Hour` or `12 Hour` |
 | **Timezone** | Europe/London | Select from a list of common timezones |
 

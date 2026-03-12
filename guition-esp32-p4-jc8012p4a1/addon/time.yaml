@@ -161,7 +161,7 @@ switch:
     name: "Show Clock"
     id: show_clock
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: RESTORE_DEFAULT_ON
     icon: "mdi:clock-outline"
 
 script:
