@@ -30,3 +30,15 @@ update:
     on_update_available:
       then:
         - update.perform: firmware_update
+
+button:
+  - platform: template
+    name: Check for Update
+    icon: "mdi:update"
+    on_press:
+      - component.update: firmware_update
+  - platform: template
+    name: Install Update
+    icon: "mdi:download"
+    on_press:
+      - update.perform: firmware_update
