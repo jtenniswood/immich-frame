@@ -103,8 +103,33 @@ online_image:
       x-api-key: !lambda 'return id(immich_api_key_text).state;'
     on_download_finished:
       then:
-        - lambda: 'id(last_downloaded_slot) = 0;'
-        - script.execute: handle_slot_download_finished
+        - lambda: |-
+            const int slot = 0;
+            auto &meta = id(slot0);
+            if (meta.asset_id != meta.pending_asset_id) {
+              ESP_LOGW("immich", "Slot %d download stale, ignoring", slot);
+              return;
+            }
+            meta.ready = true;
+            id(immich_download_retries) = 0;
+            ESP_LOGI("immich", "Slot %d ready: %s", slot, meta.asset_id.c_str());
+            bool is_active = (id(active_slot) == slot);
+            if (is_active) {
+              copy_slot_to_display(meta, id(current_display));
+              if (!meta.is_portrait) id(active_slot_displayed) = true;
+            }
+            if (is_active && !meta.is_portrait) {
+              id(immich_display_current).execute();
+            } else if (is_active && meta.is_portrait) {
+              id(immich_start_portrait_active).execute();
+            } else if (!is_active && meta.is_portrait) {
+              id(companion_target_slot) = slot;
+              id(portrait_search_datetime) = meta.datetime;
+              id(portrait_primary_asset_id) = meta.asset_id;
+              id(immich_fetch_portrait_companion).execute();
+            } else if (!is_active) {
+              id(immich_prefetch_chain).execute();
+            }
     on_error:
       then:
         - lambda: 'id(last_downloaded_slot) = 0;'
@@ -120,8 +145,33 @@ online_image:
       x-api-key: !lambda 'return id(immich_api_key_text).state;'
     on_download_finished:
       then:
-        - lambda: 'id(last_downloaded_slot) = 1;'
-        - script.execute: handle_slot_download_finished
+        - lambda: |-
+            const int slot = 1;
+            auto &meta = id(slot1);
+            if (meta.asset_id != meta.pending_asset_id) {
+              ESP_LOGW("immich", "Slot %d download stale, ignoring", slot);
+              return;
+            }
+            meta.ready = true;
+            id(immich_download_retries) = 0;
+            ESP_LOGI("immich", "Slot %d ready: %s", slot, meta.asset_id.c_str());
+            bool is_active = (id(active_slot) == slot);
+            if (is_active) {
+              copy_slot_to_display(meta, id(current_display));
+              if (!meta.is_portrait) id(active_slot_displayed) = true;
+            }
+            if (is_active && !meta.is_portrait) {
+              id(immich_display_current).execute();
+            } else if (is_active && meta.is_portrait) {
+              id(immich_start_portrait_active).execute();
+            } else if (!is_active && meta.is_portrait) {
+              id(companion_target_slot) = slot;
+              id(portrait_search_datetime) = meta.datetime;
+              id(portrait_primary_asset_id) = meta.asset_id;
+              id(immich_fetch_portrait_companion).execute();
+            } else if (!is_active) {
+              id(immich_prefetch_chain).execute();
+            }
     on_error:
       then:
         - lambda: 'id(last_downloaded_slot) = 1;'
@@ -137,8 +187,33 @@ online_image:
       x-api-key: !lambda 'return id(immich_api_key_text).state;'
     on_download_finished:
       then:
-        - lambda: 'id(last_downloaded_slot) = 2;'
-        - script.execute: handle_slot_download_finished
+        - lambda: |-
+            const int slot = 2;
+            auto &meta = id(slot2);
+            if (meta.asset_id != meta.pending_asset_id) {
+              ESP_LOGW("immich", "Slot %d download stale, ignoring", slot);
+              return;
+            }
+            meta.ready = true;
+            id(immich_download_retries) = 0;
+            ESP_LOGI("immich", "Slot %d ready: %s", slot, meta.asset_id.c_str());
+            bool is_active = (id(active_slot) == slot);
+            if (is_active) {
+              copy_slot_to_display(meta, id(current_display));
+              if (!meta.is_portrait) id(active_slot_displayed) = true;
+            }
+            if (is_active && !meta.is_portrait) {
+              id(immich_display_current).execute();
+            } else if (is_active && meta.is_portrait) {
+              id(immich_start_portrait_active).execute();
+            } else if (!is_active && meta.is_portrait) {
+              id(companion_target_slot) = slot;
+              id(portrait_search_datetime) = meta.datetime;
+              id(portrait_primary_asset_id) = meta.asset_id;
+              id(immich_fetch_portrait_companion).execute();
+            } else if (!is_active) {
+              id(immich_prefetch_chain).execute();
+            }
     on_error:
       then:
         - lambda: 'id(last_downloaded_slot) = 2;'
@@ -248,43 +323,6 @@ online_image:
 
 script:
   # ---------------------------------------------------------------------------
-  # Shared handler for any slot's on_download_finished
-  # ---------------------------------------------------------------------------
-  - id: handle_slot_download_finished
-    mode: queued
-    then:
-      - lambda: |-
-          int slot = id(last_downloaded_slot);
-          auto &meta = (slot == 0) ? id(slot0) : (slot == 1) ? id(slot1) : id(slot2);
-          if (meta.asset_id != meta.pending_asset_id) {
-            ESP_LOGW("immich", "Slot %d download stale, ignoring", slot);
-            return;
-          }
-          meta.ready = true;
-          id(immich_download_retries) = 0;
-          ESP_LOGI("immich", "Slot %d ready: %s", slot, meta.asset_id.c_str());
-
-          bool is_active = (id(active_slot) == slot);
-
-          if (is_active) {
-            copy_slot_to_display(meta, id(current_display));
-            if (!meta.is_portrait) id(active_slot_displayed) = true;
-          }
-
-          if (is_active && !meta.is_portrait) {
-            id(immich_display_current).execute();
-          } else if (is_active && meta.is_portrait) {
-            id(immich_start_portrait_active).execute();
-          } else if (!is_active && meta.is_portrait) {
-            id(companion_target_slot) = slot;
-            id(portrait_search_datetime) = meta.datetime;
-            id(portrait_primary_asset_id) = meta.asset_id;
-            id(immich_fetch_portrait_companion).execute();
-          } else if (!is_active) {
-            id(immich_prefetch_chain).execute();
-          }
-
-  # ---------------------------------------------------------------------------
   # Shared handler for any slot's on_error
   # ---------------------------------------------------------------------------
   - id: handle_slot_download_error
@@ -343,24 +381,6 @@ script:
             - script.execute: immich_fetch_portrait_companion
 
   # ---------------------------------------------------------------------------
-  # Update photo metadata labels (location, time ago) with shadows
-  # ---------------------------------------------------------------------------
-  - id: update_photo_metadata_labels
-    mode: single
-    then:
-      - lambda: |-
-          std::string loc = id(current_display).location;
-          lv_label_set_text(id(location_label), loc.c_str());
-          lv_label_set_text(id(location_label_shadow), loc.c_str());
-
-          auto now = id(sntp_time).now();
-          std::string ago;
-          if (now.is_valid())
-            ago = format_time_ago(id(current_display).year, id(current_display).month, now.year, now.month);
-          lv_label_set_text(id(time_ago_label), ago.c_str());
-          lv_label_set_text(id(time_ago_label_shadow), ago.c_str());
-
-  # ---------------------------------------------------------------------------
   # Display whichever slot is active
   # ---------------------------------------------------------------------------
   - id: immich_display_current
@@ -377,8 +397,18 @@ script:
 
           auto &meta = (s == 0) ? id(slot0) : (s == 1) ? id(slot1) : id(slot2);
           lv_img_set_zoom(id(slideshow_img), meta.zoom);
-      - script.execute: update_photo_metadata_labels
-      - lambda: 'lv_obj_clear_flag(id(metadata_container), LV_OBJ_FLAG_HIDDEN);'
+
+          std::string loc = id(current_display).location;
+          lv_label_set_text(id(location_label), loc.c_str());
+          lv_label_set_text(id(location_label_shadow), loc.c_str());
+          auto now = id(sntp_time).now();
+          std::string ago;
+          if (now.is_valid())
+            ago = format_time_ago(id(current_display).year, id(current_display).month, now.year, now.month);
+          lv_label_set_text(id(time_ago_label), ago.c_str());
+          lv_label_set_text(id(time_ago_label_shadow), ago.c_str());
+
+          lv_obj_clear_flag(id(metadata_container), LV_OBJ_FLAG_HIDDEN);
       - script.execute: hide_info_overlay
       - script.execute: extract_accent_color
       - if:
@@ -557,13 +587,22 @@ script:
           lv_obj_add_flag(id(slideshow_img), LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(id(portrait_pair_container), LV_OBJ_FLAG_HIDDEN);
           ESP_LOGI("immich", "Displaying portrait pair");
+
+          std::string loc = id(current_display).location;
+          lv_label_set_text(id(location_label), loc.c_str());
+          lv_label_set_text(id(location_label_shadow), loc.c_str());
+          auto now = id(sntp_time).now();
+          std::string ago;
+          if (now.is_valid())
+            ago = format_time_ago(id(current_display).year, id(current_display).month, now.year, now.month);
+          lv_label_set_text(id(time_ago_label), ago.c_str());
+          lv_label_set_text(id(time_ago_label_shadow), ago.c_str());
       - lvgl.image.update:
           id: portrait_left_img
           src: immich_portrait_left
       - lvgl.image.update:
           id: portrait_right_img
           src: immich_portrait_right
-      - script.execute: update_photo_metadata_labels
       - script.execute: extract_accent_color
       - script.execute: immich_prefetch_chain
 
