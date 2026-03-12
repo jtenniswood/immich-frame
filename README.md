@@ -1,4 +1,4 @@
-# Immich Frame
+# Espframe for Immich
 
 A standalone digital photo frame that displays your [Immich](https://immich.app/) photo library on a 10" touchscreen — no additional services required.
 
