@@ -1,9 +1,57 @@
 (function () {
   "use strict";
 
+  var TIMEZONES = [
+    "Pacific/Midway (GMT-11)","Pacific/Pago_Pago (GMT-11)","Pacific/Honolulu (GMT-10)",
+    "America/Adak (GMT-10)","America/Anchorage (GMT-9)","America/Juneau (GMT-9)",
+    "America/Los_Angeles (GMT-8)","America/Vancouver (GMT-8)","America/Tijuana (GMT-8)",
+    "America/Denver (GMT-7)","America/Phoenix (GMT-7)","America/Edmonton (GMT-7)",
+    "America/Boise (GMT-7)","America/Chicago (GMT-6)","America/Mexico_City (GMT-6)",
+    "America/Winnipeg (GMT-6)","America/Guatemala (GMT-6)","America/Costa_Rica (GMT-6)",
+    "America/New_York (GMT-5)","America/Toronto (GMT-5)","America/Detroit (GMT-5)",
+    "America/Havana (GMT-5)","America/Bogota (GMT-5)","America/Lima (GMT-5)",
+    "America/Jamaica (GMT-5)","America/Panama (GMT-5)","America/Halifax (GMT-4)",
+    "America/Caracas (GMT-4)","America/Santiago (GMT-4)","America/La_Paz (GMT-4)",
+    "America/Manaus (GMT-4)","America/Barbados (GMT-4)","America/Puerto_Rico (GMT-4)",
+    "America/Santo_Domingo (GMT-4)","America/St_Johns (GMT-3:30)",
+    "America/Sao_Paulo (GMT-3)","America/Argentina/Buenos_Aires (GMT-3)",
+    "America/Montevideo (GMT-3)","America/Paramaribo (GMT-3)",
+    "Atlantic/South_Georgia (GMT-2)","Atlantic/Azores (GMT-1)","Atlantic/Cape_Verde (GMT-1)",
+    "UTC (GMT+0)","Europe/London (GMT+0)","Europe/Dublin (GMT+0)","Europe/Lisbon (GMT+0)",
+    "Africa/Casablanca (GMT+1)","Africa/Accra (GMT+0)","Atlantic/Reykjavik (GMT+0)",
+    "Europe/Paris (GMT+1)","Europe/Berlin (GMT+1)","Europe/Rome (GMT+1)",
+    "Europe/Madrid (GMT+1)","Europe/Amsterdam (GMT+1)","Europe/Brussels (GMT+1)",
+    "Europe/Vienna (GMT+1)","Europe/Zurich (GMT+1)","Europe/Stockholm (GMT+1)",
+    "Europe/Oslo (GMT+1)","Europe/Copenhagen (GMT+1)","Europe/Warsaw (GMT+1)",
+    "Europe/Prague (GMT+1)","Europe/Budapest (GMT+1)","Europe/Belgrade (GMT+1)",
+    "Africa/Lagos (GMT+1)","Africa/Tunis (GMT+1)","Africa/Cairo (GMT+2)",
+    "Europe/Athens (GMT+2)","Europe/Bucharest (GMT+2)","Europe/Helsinki (GMT+2)",
+    "Europe/Kyiv (GMT+2)","Europe/Istanbul (GMT+3)","Africa/Johannesburg (GMT+2)",
+    "Africa/Nairobi (GMT+3)","Asia/Jerusalem (GMT+2)","Asia/Amman (GMT+3)",
+    "Asia/Beirut (GMT+2)","Europe/Moscow (GMT+3)","Asia/Baghdad (GMT+3)",
+    "Asia/Riyadh (GMT+3)","Asia/Kuwait (GMT+3)","Asia/Qatar (GMT+3)",
+    "Africa/Addis_Ababa (GMT+3)","Asia/Tehran (GMT+3:30)","Asia/Dubai (GMT+4)",
+    "Asia/Muscat (GMT+4)","Asia/Baku (GMT+4)","Asia/Tbilisi (GMT+4)",
+    "Indian/Mauritius (GMT+4)","Asia/Kabul (GMT+4:30)","Asia/Karachi (GMT+5)",
+    "Asia/Tashkent (GMT+5)","Asia/Yekaterinburg (GMT+5)","Asia/Kolkata (GMT+5:30)",
+    "Asia/Colombo (GMT+5:30)","Asia/Kathmandu (GMT+5:45)","Asia/Dhaka (GMT+6)",
+    "Asia/Almaty (GMT+6)","Asia/Rangoon (GMT+6:30)","Asia/Bangkok (GMT+7)",
+    "Asia/Jakarta (GMT+7)","Asia/Ho_Chi_Minh (GMT+7)","Asia/Singapore (GMT+8)",
+    "Asia/Kuala_Lumpur (GMT+8)","Asia/Shanghai (GMT+8)","Asia/Hong_Kong (GMT+8)",
+    "Asia/Taipei (GMT+8)","Asia/Manila (GMT+8)","Australia/Perth (GMT+8)",
+    "Asia/Tokyo (GMT+9)","Asia/Seoul (GMT+9)","Asia/Pyongyang (GMT+9)",
+    "Australia/Adelaide (GMT+9:30)","Australia/Darwin (GMT+9:30)",
+    "Australia/Sydney (GMT+10)","Australia/Melbourne (GMT+10)","Australia/Brisbane (GMT+10)",
+    "Australia/Hobart (GMT+10)","Pacific/Guam (GMT+10)","Pacific/Port_Moresby (GMT+10)",
+    "Asia/Vladivostok (GMT+10)","Pacific/Noumea (GMT+11)","Pacific/Norfolk (GMT+11)",
+    "Asia/Magadan (GMT+11)","Pacific/Auckland (GMT+12)","Pacific/Fiji (GMT+12)",
+    "Pacific/Chatham (GMT+12:45)","Pacific/Tongatapu (GMT+13)","Pacific/Apia (GMT+13)",
+    "Pacific/Kiritimati (GMT+14)"
+  ];
+
   var S = {
     clock_options: ["24 Hour", "12 Hour"],
-    tz_options: [],
+    tz_options: TIMEZONES,
     interval_min: 5,
     interval_max: 300,
     interval_step: 5,
@@ -14,7 +62,7 @@
     clock_format: "24 Hour",
     immich_url: "",
     api_key: "",
-    timezone: "",
+    timezone: "Europe/London (GMT+0)",
     firmware: "",
     installed_version: "",
     latest_version: "",
@@ -256,7 +304,7 @@
 
       var f2 = field("Timezone");
       f2.appendChild(
-        searchableSelect(S.tz_options, S.timezone, function (v) {
+        timezoneSelect(S.tz_options, S.timezone, function (v) {
           post(endpoints.timezone + "/set", { option: v });
           S.timezone = v;
         })
@@ -421,7 +469,7 @@
 
     var f7 = field("Timezone");
     f7.appendChild(
-      searchableSelect(S.tz_options, S.timezone, function (v) {
+      timezoneSelect(S.tz_options, S.timezone, function (v) {
         post(endpoints.timezone + "/set", { option: v });
         S.timezone = v;
       })
@@ -541,93 +589,22 @@
       : '<span class="dot red"></span> Disconnected';
   }
 
-  // --- Searchable Select ---
+  // --- Timezone Select ---
 
-  function searchableSelect(options, current, onChange) {
-    var wrap = el("div", "searchable");
-    var inp = document.createElement("input");
-    inp.type = "text";
-    inp.value = current || "";
-    inp.placeholder = "Search timezones\u2026";
-
-    var dd = el("div", "dropdown");
-    var highlighted = -1;
-
-    function render(filter) {
-      dd.innerHTML = "";
-      var f = (filter || "").toLowerCase();
-      var items = options.filter(function (o) {
-        return !f || o.toLowerCase().indexOf(f) !== -1;
-      });
-      if (items.length === 0) {
-        var empty = document.createElement("div");
-        empty.textContent = "No matches";
-        empty.style.color = "#666";
-        dd.appendChild(empty);
-        return;
-      }
-      items.forEach(function (o) {
-        var row = document.createElement("div");
-        row.textContent = o;
-        if (o === current) row.className = "selected";
-        row.onmousedown = function (e) {
-          e.preventDefault();
-          inp.value = o;
-          current = o;
-          dd.classList.remove("open");
-          onChange(o);
-        };
-        dd.appendChild(row);
-      });
-      highlighted = -1;
-    }
-
-    inp.onfocus = function () {
-      inp.select();
-      render("");
-      dd.classList.add("open");
+  function timezoneSelect(options, current, onChange) {
+    var sel = document.createElement("select");
+    sel.className = "select";
+    options.forEach(function (o) {
+      var opt = document.createElement("option");
+      opt.value = o;
+      opt.textContent = o;
+      if (o === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = function () {
+      onChange(sel.value);
     };
-    inp.oninput = function () {
-      render(inp.value);
-      dd.classList.add("open");
-    };
-    inp.onblur = function () {
-      setTimeout(function () {
-        dd.classList.remove("open");
-      }, 200);
-    };
-    inp.onkeydown = function (e) {
-      var items = dd.children;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        highlighted = Math.min(highlighted + 1, items.length - 1);
-        updateHighlight(items);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        highlighted = Math.max(highlighted - 1, 0);
-        updateHighlight(items);
-      } else if (e.key === "Enter" && highlighted >= 0 && items[highlighted]) {
-        e.preventDefault();
-        if (items[highlighted].onmousedown)
-          items[highlighted].onmousedown({ preventDefault: function () {} });
-      } else if (e.key === "Escape") {
-        dd.classList.remove("open");
-        inp.blur();
-      }
-    };
-
-    function updateHighlight(items) {
-      for (var i = 0; i < items.length; i++) {
-        items[i].classList.toggle("highlight", i === highlighted);
-      }
-      if (items[highlighted]) {
-        items[highlighted].scrollIntoView({ block: "nearest" });
-      }
-    }
-
-    wrap.appendChild(inp);
-    wrap.appendChild(dd);
-    return wrap;
+    return sel;
   }
 
   // --- Helpers ---
