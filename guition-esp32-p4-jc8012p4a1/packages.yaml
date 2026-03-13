@@ -6,6 +6,7 @@ packages:
   connectivity:    !include addon/connectivity.yaml
   immich_config:   !include addon/immich_config.yaml
   backlight:       !include addon/backlight.yaml
+  backlight_sched: !include addon/backlight_schedule.yaml
   time_sync:       !include addon/time.yaml
   accent_color:    !include addon/accent_color.yaml
   screen_loading:  !include device/screen_loading.yaml

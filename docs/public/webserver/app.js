@@ -67,6 +67,17 @@
     installed_version: "",
     latest_version: "",
     update_available: false,
+    auto_update: true,
+    update_frequency: "Daily",
+    update_freq_options: ["Hourly", "Daily", "Weekly"],
+    schedule_enabled: false,
+    schedule_on_hour: 6,
+    schedule_off_hour: 23,
+    day_night_enabled: true,
+    brightness_day: 100,
+    brightness_night: 75,
+    sunrise: "",
+    sunset: "",
   };
 
   var app = document.getElementById("app");
@@ -86,6 +97,16 @@
     show_clock: "/switch/show_clock",
     firmware: "/text_sensor/firmware_version",
     update: "/update/firmware_update",
+    auto_update: "/switch/auto_update",
+    update_frequency: "/select/update_frequency",
+    schedule_enabled: "/switch/screen_schedule",
+    schedule_on_hour: "/number/schedule_on_hour",
+    schedule_off_hour: "/number/schedule_off_hour",
+    day_night_enabled: "/switch/automatic_brightness",
+    brightness_day: "/number/daytime_brightness",
+    brightness_night: "/number/nighttime_brightness",
+    sunrise: "/text_sensor/sunrise_time",
+    sunset: "/text_sensor/sunset_time",
   };
 
   function post(url, params) {
@@ -150,6 +171,27 @@
         S.installed_version &&
         S.latest_version &&
         S.installed_version !== S.latest_version;
+    } else if (id === "switch-auto_update") {
+      S.auto_update = d.value === true || d.state === "ON";
+    } else if (id === "select-update_frequency") {
+      S.update_frequency = d.value || "Daily";
+      if (d.option && d.option.length) S.update_freq_options = d.option;
+    } else if (id === "switch-screen_schedule") {
+      S.schedule_enabled = d.value === true || d.state === "ON";
+    } else if (id === "number-schedule_on_hour") {
+      S.schedule_on_hour = d.value != null ? d.value : 6;
+    } else if (id === "number-schedule_off_hour") {
+      S.schedule_off_hour = d.value != null ? d.value : 23;
+    } else if (id === "switch-automatic_brightness") {
+      S.day_night_enabled = d.value === true || d.state === "ON";
+    } else if (id === "number-daytime_brightness") {
+      S.brightness_day = d.value != null ? d.value : 100;
+    } else if (id === "number-nighttime_brightness") {
+      S.brightness_night = d.value != null ? d.value : 75;
+    } else if (id === "text_sensor-sunrise_time") {
+      S.sunrise = d.value || d.state || "";
+    } else if (id === "text_sensor-sunset_time") {
+      S.sunset = d.value || d.state || "";
     }
   }
 
@@ -483,6 +525,140 @@
     disp.appendChild(f4);
     wrap.appendChild(disp);
 
+    // Schedule
+    var sched = el("div", "card");
+    sched.innerHTML = "<h3>Screen Schedule</h3>";
+
+    var fSchedToggle = field("");
+    var schedTr = el("div", "toggle-row");
+    schedTr.innerHTML = "<span>Enable Schedule</span>";
+    var schedTog = el("div", S.schedule_enabled ? "toggle on" : "toggle");
+    var schedDetails = el("div");
+    schedDetails.style.display = S.schedule_enabled ? "" : "none";
+
+    schedTog.onclick = function () {
+      S.schedule_enabled = !S.schedule_enabled;
+      schedTog.className = S.schedule_enabled ? "toggle on" : "toggle";
+      schedDetails.style.display = S.schedule_enabled ? "" : "none";
+      post(endpoints.schedule_enabled + (S.schedule_enabled ? "/turn_on" : "/turn_off"));
+    };
+    schedTr.appendChild(schedTog);
+    fSchedToggle.appendChild(schedTr);
+    sched.appendChild(fSchedToggle);
+
+    var fOnTime = field("On Time");
+    var onSel = document.createElement("select");
+    onSel.className = "select";
+    for (var h = 0; h < 24; h++) {
+      var o = document.createElement("option");
+      o.value = h;
+      o.textContent = formatHour(h);
+      if (h === Math.round(S.schedule_on_hour)) o.selected = true;
+      onSel.appendChild(o);
+    }
+    onSel.onchange = function () {
+      S.schedule_on_hour = parseInt(onSel.value);
+      post(endpoints.schedule_on_hour + "/set", { value: onSel.value });
+    };
+    fOnTime.appendChild(onSel);
+    schedDetails.appendChild(fOnTime);
+
+    var fOffTime = field("Off Time");
+    var offSel = document.createElement("select");
+    offSel.className = "select";
+    for (var h2 = 0; h2 < 24; h2++) {
+      var o2 = document.createElement("option");
+      o2.value = h2;
+      o2.textContent = formatHour(h2);
+      if (h2 === Math.round(S.schedule_off_hour)) o2.selected = true;
+      offSel.appendChild(o2);
+    }
+    offSel.onchange = function () {
+      S.schedule_off_hour = parseInt(offSel.value);
+      post(endpoints.schedule_off_hour + "/set", { value: offSel.value });
+    };
+    fOffTime.appendChild(offSel);
+    schedDetails.appendChild(fOffTime);
+
+    sched.appendChild(schedDetails);
+    wrap.appendChild(sched);
+
+    // Day/Night Brightness
+    var dnCard = el("div", "card");
+    dnCard.innerHTML = "<h3>Automatic Brightness</h3>";
+
+    var fDnToggle = field("");
+    var dnTr = el("div", "toggle-row");
+    dnTr.innerHTML = "<span>Day/Night Brightness</span>";
+    var dnTog = el("div", S.day_night_enabled ? "toggle on" : "toggle");
+    var dnDetails = el("div");
+    dnDetails.style.display = S.day_night_enabled ? "" : "none";
+
+    dnTog.onclick = function () {
+      S.day_night_enabled = !S.day_night_enabled;
+      dnTog.className = S.day_night_enabled ? "toggle on" : "toggle";
+      dnDetails.style.display = S.day_night_enabled ? "" : "none";
+      post(endpoints.day_night_enabled + (S.day_night_enabled ? "/turn_on" : "/turn_off"));
+    };
+    dnTr.appendChild(dnTog);
+    fDnToggle.appendChild(dnTr);
+    dnCard.appendChild(fDnToggle);
+
+    var fDayBrt = field("Daytime Brightness");
+    var rwDay = el("div", "range-wrap");
+    var daySlider = document.createElement("input");
+    daySlider.type = "range";
+    daySlider.min = 10;
+    daySlider.max = 100;
+    daySlider.step = 5;
+    daySlider.value = S.brightness_day;
+    var dayVal = el("span", "range-val");
+    dayVal.textContent = Math.round(S.brightness_day) + "%";
+    daySlider.oninput = function () {
+      dayVal.textContent = daySlider.value + "%";
+    };
+    daySlider.onchange = function () {
+      post(endpoints.brightness_day + "/set", { value: daySlider.value });
+    };
+    rwDay.appendChild(daySlider);
+    rwDay.appendChild(dayVal);
+    fDayBrt.appendChild(rwDay);
+    dnDetails.appendChild(fDayBrt);
+
+    var fNightBrt = field("Nighttime Brightness");
+    var rwNight = el("div", "range-wrap");
+    var nightSlider = document.createElement("input");
+    nightSlider.type = "range";
+    nightSlider.min = 10;
+    nightSlider.max = 100;
+    nightSlider.step = 5;
+    nightSlider.value = S.brightness_night;
+    var nightVal = el("span", "range-val");
+    nightVal.textContent = Math.round(S.brightness_night) + "%";
+    nightSlider.oninput = function () {
+      nightVal.textContent = nightSlider.value + "%";
+    };
+    nightSlider.onchange = function () {
+      post(endpoints.brightness_night + "/set", { value: nightSlider.value });
+    };
+    rwNight.appendChild(nightSlider);
+    rwNight.appendChild(nightVal);
+    fNightBrt.appendChild(rwNight);
+    dnDetails.appendChild(fNightBrt);
+
+    if (S.sunrise || S.sunset) {
+      var fSunInfo = el("div", "field sun-info");
+      var sunText = "";
+      if (S.sunrise) sunText += "Sunrise: " + esc(S.sunrise);
+      if (S.sunrise && S.sunset) sunText += " \u00a0/\u00a0 ";
+      if (S.sunset) sunText += "Sunset: " + esc(S.sunset);
+      fSunInfo.innerHTML = sunText;
+      dnDetails.appendChild(fSunInfo);
+    }
+
+    dnCard.appendChild(dnDetails);
+    wrap.appendChild(dnCard);
+
     // Clock
     var clk = el("div", "card");
     clk.innerHTML = "<h3>Clock</h3>";
@@ -607,6 +783,41 @@
       btnRow.appendChild(checkBtn);
       btnRow.appendChild(statusMsg);
       fw.appendChild(btnRow);
+
+      var fAutoUpd = field("");
+      var autoTr = el("div", "toggle-row");
+      autoTr.innerHTML = "<span>Auto Update</span>";
+      var autoTog = el("div", S.auto_update ? "toggle on" : "toggle");
+      autoTog.onclick = function () {
+        S.auto_update = !S.auto_update;
+        autoTog.className = S.auto_update ? "toggle on" : "toggle";
+        post(
+          endpoints.auto_update + (S.auto_update ? "/turn_on" : "/turn_off")
+        );
+        freqField.style.display = S.auto_update ? "" : "none";
+      };
+      autoTr.appendChild(autoTog);
+      fAutoUpd.appendChild(autoTr);
+      fw.appendChild(fAutoUpd);
+
+      var freqField = field("Update Frequency");
+      var freqSel = document.createElement("select");
+      freqSel.className = "select";
+      S.update_freq_options.forEach(function (opt) {
+        var o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === S.update_frequency) o.selected = true;
+        freqSel.appendChild(o);
+      });
+      freqSel.onchange = function () {
+        S.update_frequency = freqSel.value;
+        post(endpoints.update_frequency + "/set", { option: freqSel.value });
+      };
+      freqField.appendChild(freqSel);
+      freqField.style.display = S.auto_update ? "" : "none";
+      fw.appendChild(freqField);
+
       wrap.appendChild(fw);
     }
 
@@ -670,6 +881,16 @@
   }
 
   function setStatus() {}
+
+  // --- Hour formatting ---
+
+  function formatHour(h) {
+    h = Math.round(h);
+    if (h === 0) return "12:00 AM";
+    if (h < 12) return h + ":00 AM";
+    if (h === 12) return "12:00 PM";
+    return (h - 12) + ":00 PM";
+  }
 
   // --- Timezone Select ---
 

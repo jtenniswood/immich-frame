@@ -39,6 +39,15 @@ script:
                 tag: immich
                 format: "Immich URL or API key not configured"
             - script.stop: immich_fetch_into_slot
+      - if:
+          condition:
+            lambda: 'return id(backlight_paused);'
+          then:
+            - logger.log:
+                level: INFO
+                tag: immich
+                format: "Fetch paused (backlight off)"
+            - script.stop: immich_fetch_into_slot
       - http_request.post:
           id: http_req
           url: !lambda 'return id(immich_url).state + "/api/search/random";'

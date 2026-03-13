@@ -115,6 +115,12 @@ select option{background:var(--surface);color:var(--text)}
 .fade-in{animation:fadeIn .3s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
+.sun-info{
+  font-size:.8rem;color:var(--text2);
+  padding:8px 12px;background:var(--surface2);border-radius:6px;
+  text-align:center;
+}
+
 .version{text-align:center;font-size:.75rem;color:var(--text2);margin-top:8px;opacity:.6}
 
 .card-logs{

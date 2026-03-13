@@ -21,6 +21,36 @@ See [Creating an API Key](/api-key) for how to generate a key and which permissi
 |---|---|---|
 | **Slideshow Interval** | 15s | Time between photos (5–300 seconds) |
 
+### Screen Schedule
+
+| Setting | Default | Description |
+|---|---|---|
+| **Enable Schedule** | Off | Toggle scheduled backlight on/off |
+| **On Time** | 6:00 AM | Hour the backlight turns on |
+| **Off Time** | 11:00 PM | Hour the backlight turns off |
+
+When the schedule is active and the current time is outside the on/off window, the backlight turns off and photo downloads are paused to conserve bandwidth. Downloads resume automatically when the backlight turns back on.
+
+### Automatic Brightness
+
+| Setting | Default | Description |
+|---|---|---|
+| **Day/Night Brightness** | On | Automatically adjust brightness based on sunrise/sunset |
+| **Daytime Brightness** | 100% | Brightness level during the day (10–100%) |
+| **Nighttime Brightness** | 75% | Brightness level at night (10–100%) |
+
+Sunrise and sunset times are calculated automatically based on the selected timezone. The current sunrise and sunset times are displayed below the brightness sliders.
+
+### Touch Gestures
+
+| Gesture | Action |
+|---|---|
+| **Long press** | Advance to next photo |
+| **Press and hold 3 seconds** | Turn off backlight |
+| **Tap (when backlight is off)** | Turn backlight back on |
+
+When the backlight is manually turned off via a 3-second hold, tapping the screen restores it to the correct brightness level (taking day/night settings into account). If a schedule is active and the current time is outside the on/off window, tapping will not turn the backlight on.
+
 ### Clock
 
 | Setting | Default | Description |
@@ -28,3 +58,15 @@ See [Creating an API Key](/api-key) for how to generate a key and which permissi
 | **Show Clock** | On | Toggle the clock overlay on the slideshow screen |
 | **Clock Format** | 24 Hour | `24 Hour` or `12 Hour` |
 | **Timezone** | Europe/London | Select from a list of common timezones |
+
+!!! note
+    Changes to clock settings can take up to 10 seconds to apply to the screen.
+
+### Firmware Updates
+
+| Setting | Default | Description |
+|---|---|---|
+| **Auto Update** | On | Automatically check for and install firmware updates |
+| **Update Frequency** | Daily | How often to check for updates: `Hourly`, `Daily`, or `Weekly` |
+
+When auto update is enabled, the device periodically checks for new firmware and installs it automatically. You can always check for updates manually using the **Check for Update** button, regardless of the auto update setting.

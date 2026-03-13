@@ -1,0 +1,366 @@
+# =============================================================================
+# BACKLIGHT SCHEDULE & DAY/NIGHT BRIGHTNESS
+# =============================================================================
+# Scheduled on/off with download pausing, automatic day/night brightness
+# based on sunrise/sunset calculation, and touch-to-sleep/wake gesture.
+# =============================================================================
+
+globals:
+  - id: backlight_paused
+    type: bool
+    initial_value: 'false'
+  - id: backlight_manual_off
+    type: bool
+    initial_value: 'false'
+  - id: touch_started_while_off
+    type: bool
+    initial_value: 'false'
+  - id: sunrise_hour
+    type: int
+    initial_value: '6'
+  - id: sunrise_minute
+    type: int
+    initial_value: '0'
+  - id: sunset_hour
+    type: int
+    initial_value: '18'
+  - id: sunset_minute
+    type: int
+    initial_value: '0'
+  - id: sunrise_sunset_valid
+    type: bool
+    initial_value: 'false'
+  - id: last_schedule_state
+    type: bool
+    initial_value: 'true'
+  - id: last_is_daytime
+    type: bool
+    initial_value: 'true'
+
+# =============================================================================
+# USER-CONFIGURABLE ENTITIES
+# =============================================================================
+
+switch:
+  - platform: template
+    name: "Screen Schedule"
+    id: schedule_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:clock-time-four-outline"
+    on_turn_on:
+      then:
+        - script.execute: backlight_check_schedule
+    on_turn_off:
+      then:
+        - lambda: |-
+            if (id(backlight_paused) && !id(backlight_manual_off)) {
+              id(backlight_paused) = false;
+              id(last_schedule_state) = true;
+              id(backlight_apply_brightness).execute();
+              id(immich_prefetch_chain).execute();
+            }
+
+  - platform: template
+    name: "Automatic Brightness"
+    id: day_night_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    icon: "mdi:theme-light-dark"
+    on_turn_on:
+      then:
+        - script.execute: backlight_apply_brightness
+    on_turn_off:
+      then:
+        - script.execute: backlight_apply_brightness
+
+number:
+  - platform: template
+    name: "Schedule On Hour"
+    id: schedule_on_hour
+    min_value: 0
+    max_value: 23
+    step: 1
+    initial_value: 6
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "h"
+    icon: "mdi:weather-sunset-up"
+    on_value:
+      then:
+        - script.execute: backlight_check_schedule
+
+  - platform: template
+    name: "Schedule Off Hour"
+    id: schedule_off_hour
+    min_value: 0
+    max_value: 23
+    step: 1
+    initial_value: 23
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "h"
+    icon: "mdi:weather-sunset-down"
+    on_value:
+      then:
+        - script.execute: backlight_check_schedule
+
+  - platform: template
+    name: "Daytime Brightness"
+    id: brightness_day
+    min_value: 10
+    max_value: 100
+    step: 5
+    initial_value: 100
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "%"
+    icon: "mdi:brightness-7"
+    on_value:
+      then:
+        - script.execute: backlight_apply_brightness
+
+  - platform: template
+    name: "Nighttime Brightness"
+    id: brightness_night
+    min_value: 10
+    max_value: 100
+    step: 5
+    initial_value: 75
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "%"
+    icon: "mdi:brightness-4"
+    on_value:
+      then:
+        - script.execute: backlight_apply_brightness
+
+text_sensor:
+  - platform: template
+    name: "Sunrise Time"
+    id: sunrise_time_sensor
+    icon: "mdi:weather-sunset-up"
+
+  - platform: template
+    name: "Sunset Time"
+    id: sunset_time_sensor
+    icon: "mdi:weather-sunset-down"
+
+# =============================================================================
+# SCRIPTS
+# =============================================================================
+
+script:
+  # ---------------------------------------------------------------------------
+  # Determine correct brightness and apply it
+  # ---------------------------------------------------------------------------
+  - id: backlight_apply_brightness
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(backlight_paused);'
+          then:
+            - light.turn_off:
+                id: backlight
+                transition_length: 500ms
+          else:
+            - lambda: |-
+                float pct;
+                if (id(day_night_enabled).state && id(sunrise_sunset_valid)) {
+                  auto now = id(sntp_time).now();
+                  if (now.is_valid()) {
+                    int now_min = now.hour * 60 + now.minute;
+                    int rise_min = id(sunrise_hour) * 60 + id(sunrise_minute);
+                    int set_min = id(sunset_hour) * 60 + id(sunset_minute);
+                    bool is_day = (now_min >= rise_min && now_min < set_min);
+                    id(last_is_daytime) = is_day;
+                    pct = is_day ? id(brightness_day).state : id(brightness_night).state;
+                  } else {
+                    pct = id(brightness_day).state;
+                  }
+                } else if (id(day_night_enabled).state) {
+                  pct = id(brightness_day).state;
+                } else {
+                  pct = 100.0f;
+                }
+                float brightness = pct / 100.0f;
+                auto call = id(backlight).turn_on();
+                call.set_brightness(brightness);
+                call.set_transition_length(500);
+                call.perform();
+
+  # ---------------------------------------------------------------------------
+  # Check schedule and act (called by interval and on setting change)
+  # ---------------------------------------------------------------------------
+  - id: backlight_check_schedule
+    mode: single
+    then:
+      - lambda: |-
+          if (!id(schedule_enabled).state) return;
+          auto now = id(sntp_time).now();
+          if (!now.is_valid()) return;
+
+          int current_hour = now.hour;
+          int on_hour = (int)id(schedule_on_hour).state;
+          int off_hour = (int)id(schedule_off_hour).state;
+
+          bool in_window;
+          if (on_hour < off_hour) {
+            in_window = (current_hour >= on_hour && current_hour < off_hour);
+          } else if (on_hour > off_hour) {
+            in_window = (current_hour >= on_hour || current_hour < off_hour);
+          } else {
+            in_window = true;
+          }
+
+          if (in_window && id(backlight_paused) && !id(backlight_manual_off)) {
+            ESP_LOGI("backlight", "Schedule: turning on (hour %d in window %d-%d)", current_hour, on_hour, off_hour);
+            id(backlight_paused) = false;
+            id(last_schedule_state) = true;
+            id(backlight_apply_brightness).execute();
+            id(immich_prefetch_chain).execute();
+          } else if (!in_window && !id(backlight_paused)) {
+            ESP_LOGI("backlight", "Schedule: turning off (hour %d outside window %d-%d)", current_hour, on_hour, off_hour);
+            id(backlight_paused) = true;
+            id(backlight_manual_off) = false;
+            id(last_schedule_state) = false;
+            id(backlight_apply_brightness).execute();
+          }
+
+  # ---------------------------------------------------------------------------
+  # Recalculate sunrise/sunset from timezone coordinates and current date
+  # ---------------------------------------------------------------------------
+  - id: backlight_recalc_sunrise_sunset
+    mode: single
+    then:
+      - lambda: |-
+          auto now = id(sntp_time).now();
+          if (!now.is_valid()) return;
+
+          std::string tz_full = id(timezone_select).state;
+          std::string tz_id = tz_full.substr(0, tz_full.find(" ("));
+          float tz_offset = parse_tz_offset(tz_full);
+
+          float lat, lon;
+          if (!lookup_tz_coords(tz_id, lat, lon)) {
+            ESP_LOGW("backlight", "No coordinates for timezone %s", tz_id.c_str());
+            id(sunrise_sunset_valid) = false;
+            return;
+          }
+
+          int rh, rm, sh, sm;
+          calc_sunrise_sunset(now.year, now.month, now.day_of_month,
+                              lat, lon, tz_offset, rh, rm, sh, sm);
+
+          id(sunrise_hour) = rh;
+          id(sunrise_minute) = rm;
+          id(sunset_hour) = sh;
+          id(sunset_minute) = sm;
+          id(sunrise_sunset_valid) = true;
+
+          char buf[16];
+          snprintf(buf, sizeof(buf), "%d:%02d AM", (rh == 0) ? 12 : (rh > 12 ? rh - 12 : rh), rm);
+          if (rh >= 12) snprintf(buf, sizeof(buf), "%d:%02d PM", (rh == 12) ? 12 : rh - 12, rm);
+          id(sunrise_time_sensor).publish_state(buf);
+
+          snprintf(buf, sizeof(buf), "%d:%02d PM", (sh == 12) ? 12 : (sh > 12 ? sh - 12 : sh), sm);
+          if (sh < 12) snprintf(buf, sizeof(buf), "%d:%02d AM", (sh == 0) ? 12 : sh, sm);
+          id(sunset_time_sensor).publish_state(buf);
+
+          ESP_LOGI("backlight", "Sunrise %02d:%02d, Sunset %02d:%02d (lat=%.2f lon=%.2f tz=%.1f)",
+                   rh, rm, sh, sm, lat, lon, tz_offset);
+
+          id(backlight_apply_brightness).execute();
+
+  # ---------------------------------------------------------------------------
+  # 3-second hold timer: turns off backlight if user holds for 3 seconds
+  # Stopped on touch release. If it completes, backlight goes off.
+  # ---------------------------------------------------------------------------
+  - id: backlight_hold_timer
+    mode: restart
+    then:
+      - delay: 3s
+      - lambda: |-
+          ESP_LOGI("backlight", "Manual off via 3s hold");
+          id(backlight_manual_off) = true;
+          id(backlight_paused) = true;
+      - light.turn_off:
+          id: backlight
+          transition_length: 500ms
+
+  # ---------------------------------------------------------------------------
+  # Wake from manual off: restore brightness
+  # ---------------------------------------------------------------------------
+  - id: backlight_wake
+    mode: single
+    then:
+      - lambda: |-
+          id(backlight_manual_off) = false;
+          if (id(schedule_enabled).state) {
+            auto now = id(sntp_time).now();
+            if (now.is_valid()) {
+              int current_hour = now.hour;
+              int on_hour = (int)id(schedule_on_hour).state;
+              int off_hour = (int)id(schedule_off_hour).state;
+              bool in_window;
+              if (on_hour < off_hour)
+                in_window = (current_hour >= on_hour && current_hour < off_hour);
+              else if (on_hour > off_hour)
+                in_window = (current_hour >= on_hour || current_hour < off_hour);
+              else
+                in_window = true;
+              if (!in_window) {
+                ESP_LOGI("backlight", "Wake blocked: outside schedule window");
+                return;
+              }
+            }
+          }
+          id(backlight_paused) = false;
+          ESP_LOGI("backlight", "Wake: restoring brightness");
+      - script.execute: backlight_apply_brightness
+      - script.execute: immich_prefetch_chain
+
+# =============================================================================
+# PERIODIC CHECK (60 seconds)
+# =============================================================================
+
+interval:
+  - interval: 60s
+    then:
+      - script.execute: backlight_check_schedule
+      - if:
+          condition:
+            lambda: |-
+              if (!id(day_night_enabled).state || !id(sunrise_sunset_valid) || id(backlight_paused)) return false;
+              auto now = id(sntp_time).now();
+              if (!now.is_valid()) return false;
+              int now_min = now.hour * 60 + now.minute;
+              int rise_min = id(sunrise_hour) * 60 + id(sunrise_minute);
+              int set_min = id(sunset_hour) * 60 + id(sunset_minute);
+              bool is_day = (now_min >= rise_min && now_min < set_min);
+              if (is_day != id(last_is_daytime)) {
+                id(last_is_daytime) = is_day;
+                return true;
+              }
+              return false;
+          then:
+            - script.execute: backlight_apply_brightness
+      - if:
+          condition:
+            lambda: |-
+              auto now = id(sntp_time).now();
+              return now.is_valid() && now.hour == 0 && now.minute == 0;
+          then:
+            - script.execute: backlight_recalc_sunrise_sunset
+
+# =============================================================================
+# BOOT: calculate sunrise/sunset after SNTP sync
+# =============================================================================
+
+time:
+  - platform: sntp
+    on_time_sync:
+      then:
+        - script.execute: backlight_recalc_sunrise_sunset
+        - script.execute: backlight_check_schedule
