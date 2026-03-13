@@ -354,13 +354,3 @@ interval:
           then:
             - script.execute: backlight_recalc_sunrise_sunset
 
-# =============================================================================
-# BOOT: calculate sunrise/sunset after SNTP sync
-# =============================================================================
-
-time:
-  - platform: sntp
-    on_time_sync:
-      then:
-        - script.execute: backlight_recalc_sunrise_sunset
-        - script.execute: backlight_check_schedule

@@ -196,6 +196,8 @@ time:
     on_time_sync:
       then:
         - script.execute: update_clock_display
+        - script.execute: backlight_recalc_sunrise_sunset
+        - script.execute: backlight_check_schedule
 
 interval:
   - interval: 60s
