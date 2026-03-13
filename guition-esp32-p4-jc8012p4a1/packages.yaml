@@ -15,3 +15,4 @@ packages:
   immich_api:      !include addon/immich_api.yaml
   immich_slide:    !include addon/immich_slideshow.yaml
   screen_slide:    !include device/screen_slideshow.yaml
+  fw_update:       !include addon/firmware_update.yaml
