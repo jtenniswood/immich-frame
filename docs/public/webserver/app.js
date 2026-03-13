@@ -257,7 +257,7 @@
     app.innerHTML = "";
     var wrap = el("div", "fade-in");
     wrap.innerHTML =
-      '<h1>Immich Frame</h1><p class="subtitle">Let\'s connect your photo frame</p>';
+      '<h1>Espframe</h1><p class="subtitle">Let\'s connect your photo frame</p>';
     var steps = el("div", "wizard-steps");
     var s1 = el("div", "step active");
     var s2 = el("div", "step");
@@ -391,7 +391,7 @@
   function renderSettings() {
     app.innerHTML = "";
     var wrap = el("div", "fade-in");
-    wrap.innerHTML = '<h1>Immich Frame</h1><h2>Settings</h2>';
+    wrap.innerHTML = '<h1>Espframe</h1><h2>Settings</h2>';
 
     // Connection
     var conn = el("div", "card");
@@ -946,7 +946,7 @@
     options.forEach(function (o) {
       var opt = document.createElement("option");
       opt.value = o;
-      opt.textContent = o;
+      opt.textContent = o.replace(/_/g, " ");
       if (o === current) opt.selected = true;
       sel.appendChild(opt);
     });
