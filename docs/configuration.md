@@ -41,16 +41,6 @@ When the schedule is active and the current time is outside the on/off window, t
 
 Sunrise and sunset times are calculated automatically based on the selected timezone. The current sunrise and sunset times are displayed below the brightness sliders.
 
-### Touch Gestures
-
-| Gesture | Action |
-|---|---|
-| **Long press** | Advance to next photo |
-| **Press and hold 3 seconds** | Turn off backlight |
-| **Tap (when backlight is off)** | Turn backlight back on |
-
-When the backlight is manually turned off via a 3-second hold, tapping the screen restores it to the correct brightness level (taking day/night settings into account). If a schedule is active and the current time is outside the on/off window, tapping will not turn the backlight on.
-
 ### Clock
 
 | Setting | Default | Description |
