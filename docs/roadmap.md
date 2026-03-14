@@ -59,7 +59,7 @@ Remote access and VPN connectivity.
 
 | Feature | Status |
 |---|---|
-| [WireGuard VPN client](./wireguard) | Planned |
+| WireGuard VPN client | Planned |
 | Remote access to Immich over VPN | Planned |
 
 ## Error Handling
